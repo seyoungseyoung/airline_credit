@@ -1,0 +1,42 @@
+{
+  "대한항공": {
+    "stock_code": "003490",
+    "corp_code": "00113526",
+    "corp_name": "대한항공",
+    "market": "KOSPI",
+    "status": "active",
+    "modify_date": "20221229"
+  },
+  "아시아나항공": {
+    "stock_code": "020560",
+    "corp_code": "00138792",
+    "corp_name": "아시아나항공",
+    "market": "KOSPI",
+    "status": "suspended",
+    "modify_date": "20250117"
+  },
+  "제주항공": {
+    "stock_code": "089590",
+    "corp_code": "00555874",
+    "corp_name": "제주항공",
+    "market": "KOSDAQ",
+    "status": "active",
+    "modify_date": "20221227"
+  },
+  "티웨이항공": {
+    "stock_code": "091810",
+    "corp_code": "00671376",
+    "corp_name": "티웨이항공",
+    "market": "KOSDAQ",
+    "status": "active",
+    "modify_date": "20250630"
+  },
+  "에어부산": {
+    "stock_code": "298690",
+    "corp_code": "00651901",
+    "corp_name": "에어부산",
+    "market": "KOSDAQ",
+    "status": "active",
+    "modify_date": "20250117"
+  }
+}
