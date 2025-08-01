@@ -162,9 +162,44 @@ class DARTDataCache:
             
             try:
                 logger.info(f"📖 [CACHE] Loading cache file: {cache_file}")
-                with open(cache_file, 'rb') as f:
-                    data = pickle.load(f)
                 
+                # 🔥 Thread-based timeout for pickle loading
+                import threading
+                import time
+                
+                data_result = [None]
+                exception_result = [None]
+                
+                def load_pickle():
+                    try:
+                        with open(cache_file, 'rb') as f:
+                            data_result[0] = pickle.load(f)
+                    except Exception as e:
+                        exception_result[0] = e
+                
+                # 별도 스레드에서 pickle 로딩
+                load_thread = threading.Thread(target=load_pickle)
+                load_thread.daemon = True
+                load_thread.start()
+                
+                # 30초 타임아웃
+                load_thread.join(timeout=30)
+                
+                if load_thread.is_alive():
+                    logger.error(f"⚠️ [CACHE] Cache loading timeout (30s): {cache_file}")
+                    logger.error(f"🗑️ [CACHE] Removing problematic cache file")
+                    self._remove_cache_entry(cache_key)
+                    return None
+                
+                if exception_result[0] is not None:
+                    raise exception_result[0]
+                
+                if data_result[0] is None:
+                    logger.error(f"❌ [CACHE] Failed to load cache data: {cache_file}")
+                    self._remove_cache_entry(cache_key)
+                    return None
+                
+                data = data_result[0]
                 logger.info(f"✅ [CACHE] Successfully loaded cache data: {type(data)}")
                 
                 # 액세스 시간 업데이트
