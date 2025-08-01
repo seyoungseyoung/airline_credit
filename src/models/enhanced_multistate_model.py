@@ -1005,10 +1005,34 @@ class EnhancedMultiStateModel:
         df['default_event'] = (df['transition_type'] == StateDefinition.DEFAULT).astype(int)
         df['withdrawn_event'] = (df['transition_type'] == StateDefinition.WITHDRAWN).astype(int)
         
-        # Create rating category dummies for all possible ratings (0~22)
-        max_rating = int(df['from_rating'].max()) if not df.empty else 22
-        for rating in range(max_rating + 1):
-            df[f'from_rating_{rating}'] = (df['from_rating'] == rating).astype(int)
+        # Create rating category dummies using risk categories for better interpretability
+        from utils.rating_mapping import UnifiedRatingMapping
+        
+        # Create risk category dummy variables instead of individual rating dummies
+        for i, row in df.iterrows():
+            rating_num = row['from_rating']
+            rating_symbol = UnifiedRatingMapping.get_rating_symbol(rating_num)
+            
+            if rating_symbol:
+                risk_category = UnifiedRatingMapping.get_risk_category(rating_symbol)
+                # Initialize category columns if not exist
+                for category in UnifiedRatingMapping.RISK_CATEGORIES.keys():
+                    col_name = f'risk_category_{category.lower().replace(" ", "_")}'
+                    if col_name not in df.columns:
+                        df[col_name] = 0
+                
+                # Set the appropriate category
+                if risk_category:
+                    cat_col = f'risk_category_{risk_category.lower().replace(" ", "_")}'
+                    df.loc[i, cat_col] = 1
+        
+        # Also create investment grade dummy
+        df['investment_grade'] = 0
+        for i, row in df.iterrows():
+            rating_num = row['from_rating']
+            rating_symbol = UnifiedRatingMapping.get_rating_symbol(rating_num)
+            if rating_symbol and UnifiedRatingMapping.is_investment_grade(rating_symbol):
+                df.loc[i, 'investment_grade'] = 1
         
         self.survival_data = df
         return df
@@ -1026,8 +1050,12 @@ class EnhancedMultiStateModel:
             print("📊 [COX MODELS] Preparing survival data...")
             self.prepare_survival_data()
         
-        # Define covariate columns (rating + financial ratios)
-        covariate_cols = ['from_rating']
+        # Define covariate columns (risk categories + financial ratios)
+        # Use risk category variables for better interpretability and model stability
+        risk_category_cols = [col for col in self.survival_data.columns if col.startswith('risk_category_')]
+        covariate_cols = risk_category_cols + ['investment_grade']
+        
+        print(f"📊 [COX MODELS] Using {len(risk_category_cols)} risk category variables + investment grade dummy")
         
         if self.use_financial_data:
             # Add key financial ratios as covariates

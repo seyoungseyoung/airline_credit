@@ -46,19 +46,10 @@ class CreditRatingPreprocessor:
         self.rating_mapping = self._load_rating_mapping()
         
     def _load_rating_mapping(self) -> Dict[str, int]:
-        """Load rating to numeric mapping"""
-        # Standard S&P/Fitch rating scale
-        rating_scale = {
-            'AAA': 1, 'AA+': 2, 'AA': 3, 'AA-': 4,
-            'A+': 5, 'A': 6, 'A-': 7,
-            'BBB+': 8, 'BBB': 9, 'BBB-': 10,
-            'BB+': 11, 'BB': 12, 'BB-': 13,
-            'B+': 14, 'B': 15, 'B-': 16,
-            'CCC+': 17, 'CCC': 18, 'CCC-': 19,
-            'CC': 20, 'C': 21, 'D': 22,
-            'NR': 23, 'WD': 23  # NR and WD mapped to same numeric value
-        }
-        return rating_scale
+        """Load rating to numeric mapping using unified system"""
+        # Use unified rating mapping for consistency across all modules
+        from utils.rating_mapping import UnifiedRatingMapping
+        return UnifiedRatingMapping.get_rating_mapping()
     
     def load_credit_ratings(self, file_path: str) -> pd.DataFrame:
         """Load credit rating data from CSV file"""
@@ -197,15 +188,14 @@ class CreditRatingPreprocessor:
         return pd.Series(reasons, index=df.index)
     
     def calculate_risk_scores(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate risk scores with WD+NR adjustment"""
+        """Calculate risk scores with WD+NR adjustment using unified rating system"""
         df_scored = df.copy()
         
-        # Find max rating number for normalization
-        max_rating_numeric = df_scored['rating_numeric'].max()
-        if pd.isna(max_rating_numeric):
-            max_rating_numeric = 22  # Default max rating
+        # Use unified rating mapping for consistent risk calculation
+        from utils.rating_mapping import UnifiedRatingMapping
+        max_rating_numeric = max(UnifiedRatingMapping.get_rating_mapping().values())  # 22
         
-        # Base risk score (higher number = higher risk, intuitive direction)
+        # Base risk score using unified system (higher number = higher risk)
         df_scored['base_risk'] = df_scored['rating_numeric'] / max_rating_numeric
         
         # Apply WD+NR risk multiplier
@@ -218,7 +208,7 @@ class CreditRatingPreprocessor:
         regular_mask = ~wd_nr_mask
         df_scored.loc[regular_mask, 'risk_score'] = df_scored.loc[regular_mask, 'base_risk']
         
-        logger.info("Calculated risk scores with WD+NR adjustment (corrected direction: higher number = higher risk)")
+        logger.info(f"Calculated risk scores with unified mapping (max_rating={max_rating_numeric}) and WD+NR adjustment")
         return df_scored
     
     def detect_alert_conditions(self, df: pd.DataFrame) -> List[Dict]:

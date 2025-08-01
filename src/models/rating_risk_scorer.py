@@ -89,11 +89,11 @@ class RatingRiskScorer:
         """
         self.models = {}
         self.baseline_hazards = {}
-        self.rating_mapping = {
-            'AAA': 0, 'AA': 1, 'A': 2, 'BBB': 3, 
-            'BB': 4, 'B': 5, 'CCC': 6, 'D': 7, 'NR': 8
-        }
-        self.reverse_rating_mapping = {v: k for k, v in self.rating_mapping.items()}
+        
+        # Use unified rating mapping for consistency
+        from utils.rating_mapping import UnifiedRatingMapping
+        self.rating_mapping = UnifiedRatingMapping.get_rating_mapping()
+        self.reverse_rating_mapping = UnifiedRatingMapping.get_reverse_mapping()
         self.use_financial_data = use_financial_data
         
         # Train models if not provided
