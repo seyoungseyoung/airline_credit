@@ -29,9 +29,30 @@ import time
 import os
 from dataclasses import dataclass
 
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Import the new preprocessor
+try:
+    from ..core.credit_rating_preprocessor import CreditRatingPreprocessor, PreprocessingConfig
+    PREPROCESSOR_AVAILABLE = True
+except ImportError:
+    try:
+        from src.core.credit_rating_preprocessor import CreditRatingPreprocessor, PreprocessingConfig
+        PREPROCESSOR_AVAILABLE = True
+    except ImportError:
+        try:
+            from core.credit_rating_preprocessor import CreditRatingPreprocessor, PreprocessingConfig
+            PREPROCESSOR_AVAILABLE = True
+        except ImportError:
+            # Create dummy classes if import fails
+            class CreditRatingPreprocessor:
+                pass
+            class PreprocessingConfig:
+                pass
+            PREPROCESSOR_AVAILABLE = False
+            logger.warning("Credit rating preprocessor not available")
 
 @dataclass
 class AirlineCompany:
@@ -377,6 +398,38 @@ class DataPipeline:
         
         return transition_file, mapping_file
     
+    def preprocess_credit_ratings(self, input_file: str, output_dir: str = "processed_data"):
+        """Preprocess credit rating data with Option A + Meta Flag approach"""
+        if not PREPROCESSOR_AVAILABLE:
+            logger.error("Credit rating preprocessor not available")
+            return None
+        
+        try:
+            # Configuration for preprocessing
+            config = PreprocessingConfig(
+                consecutive_nr_days=30,
+                risk_multiplier=1.20,
+                alert_threshold_days=90,
+                output_dir=output_dir
+            )
+            
+            # Initialize preprocessor
+            preprocessor = CreditRatingPreprocessor(config)
+            
+            # Run preprocessing
+            logger.info("Starting credit rating preprocessing with Option A + Meta Flag")
+            df_processed = preprocessor.run_preprocessing(input_file, output_dir)
+            
+            logger.info(f"✓ Credit rating preprocessing completed")
+            logger.info(f"📊 Processed {len(df_processed)} records")
+            logger.info(f"📁 Output files created in: {output_dir}")
+            
+            return df_processed
+            
+        except Exception as e:
+            logger.error(f"Credit rating preprocessing failed: {e}")
+            return None
+    
     def run_pipeline(self, dart_api_key: Optional[str] = None, use_sample_ratings: bool = True):
         """Run the complete data pipeline"""
         logger.info("🚀 Starting Korean Airlines Credit Rating Data Pipeline")
@@ -417,6 +470,7 @@ def main():
     # Configuration
     DART_API_KEY = os.getenv('DART_API_KEY')  # Set your DART API key as environment variable
     USE_SAMPLE_RATINGS = True  # Set to False when you have real rating data
+    PREPROCESS_CREDIT_RATINGS = True  # Enable credit rating preprocessing
     
     if not DART_API_KEY:
         logger.warning("DART_API_KEY environment variable not set")
@@ -425,7 +479,28 @@ def main():
     
     # Run pipeline
     pipeline = DataPipeline(DART_API_KEY)
-    pipeline.run_pipeline(DART_API_KEY, USE_SAMPLE_RATINGS)
+    
+    # Step 1: Run traditional pipeline
+    logger.info("🚀 Step 1: Running traditional data pipeline")
+    transition_file, mapping_file = pipeline.run_pipeline(DART_API_KEY, USE_SAMPLE_RATINGS)
+    
+    # Step 2: Run credit rating preprocessing (Option A + Meta Flag)
+    if PREPROCESS_CREDIT_RATINGS and PREPROCESSOR_AVAILABLE:
+        logger.info("🚀 Step 2: Running credit rating preprocessing")
+        input_file = "Airline_Credit_Ratings_2010-2025__NR___Not_Rated_.csv"
+        
+        if os.path.exists(input_file):
+            df_processed = pipeline.preprocess_credit_ratings(input_file)
+            if df_processed is not None:
+                logger.info("✅ Credit rating preprocessing completed successfully!")
+            else:
+                logger.error("❌ Credit rating preprocessing failed")
+        else:
+            logger.warning(f"Input file {input_file} not found, skipping preprocessing")
+    else:
+        logger.info("⏭️ Skipping credit rating preprocessing")
+    
+    logger.info("🎉 All pipeline steps completed!")
 
 if __name__ == "__main__":
     main() 

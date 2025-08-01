@@ -35,21 +35,64 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
-# Import cache system
-try:
-    from dart_data_cache import get_global_cache, DARTDataCache
-    CACHE_AVAILABLE = True
-except ImportError:
-    CACHE_AVAILABLE = False
-
 # Import our models
 try:
-    from rating_risk_scorer import RatingRiskScorer, FirmProfile
-    from enhanced_multistate_model import EnhancedMultiStateModel
-    from backtest_framework import CreditRatingBacktester
+    import sys
+    import os
+    # Add parent directories to path
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)  # src/
+    root_dir = os.path.dirname(parent_dir)     # project root
+    
+    # Add all necessary paths in specific order
+    paths_to_add = [
+        parent_dir,  # src/
+        root_dir,    # project root
+        os.path.join(parent_dir, 'data'),    # src/data/
+        os.path.join(parent_dir, 'utils'),   # src/utils/
+        os.path.join(parent_dir, 'models'),  # src/models/
+        os.path.join(parent_dir, 'rag'),     # src/rag/
+        os.path.join(root_dir, 'config')     # config/
+    ]
+    
+    for path in paths_to_add:
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    
+    print(f"🔧 [DASHBOARD] Added {len(paths_to_add)} paths to Python path")
+    
+    # Import cache system (after path setup)
+    try:
+        from data.dart_data_cache import get_global_cache, DARTDataCache
+        CACHE_AVAILABLE = True
+        print("✅ Cache system loaded successfully")
+    except ImportError:
+        try:
+            from src.data.dart_data_cache import get_global_cache, DARTDataCache
+            CACHE_AVAILABLE = True
+            print("✅ Cache system loaded from src.data path")
+        except ImportError:
+            CACHE_AVAILABLE = False
+            print("❌ Cache system not available")
+    
+    # Try different import strategies
+    try:
+        from models.rating_risk_scorer import RatingRiskScorer, FirmProfile
+        from models.enhanced_multistate_model import EnhancedMultiStateModel
+        from models.backtest_framework import CreditRatingBacktester
+    except ImportError:
+        # Try absolute imports from src
+        from src.models.rating_risk_scorer import RatingRiskScorer, FirmProfile
+        from src.models.enhanced_multistate_model import EnhancedMultiStateModel
+        from src.models.backtest_framework import CreditRatingBacktester
+    
     MODEL_AVAILABLE = True
-except ImportError:
-    st.error("⚠️ Model modules not available. Please ensure all required files are present.")
+    print("✅ Model modules loaded successfully")
+    
+except ImportError as e:
+    print(f"❌ Model modules not available: {e}")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Python path: {sys.path[:5]}")  # Show first 5 paths
     MODEL_AVAILABLE = False
 
 # Configuration
@@ -57,6 +100,44 @@ RISK_THRESHOLD = 0.15  # 15% change probability threshold for alerts
 SLACK_WEBHOOK_URL = None  # Set this to your Slack webhook URL
 
 # OpenAI Configuration
+
+# Import prompt manager
+try:
+    from config.prompts import get_prompt_manager
+    PROMPT_MANAGER_AVAILABLE = True
+    print("✅ Prompt manager loaded successfully")
+except ImportError:
+    try:
+        import sys
+        sys.path.insert(0, os.path.join(root_dir, 'config'))
+        from prompts import get_prompt_manager
+        PROMPT_MANAGER_AVAILABLE = True
+        print("✅ Prompt manager loaded with explicit path")
+    except ImportError:
+        PROMPT_MANAGER_AVAILABLE = False
+        print("❌ Prompt manager not available")
+
+# Import RAG system
+try:
+    from src.rag.airline_industry_rag import AirlineIndustryRAG
+    RAG_AVAILABLE = True
+    print("✅ RAG system loaded successfully")
+except ImportError:
+    try:
+        from rag.airline_industry_rag import AirlineIndustryRAG
+        RAG_AVAILABLE = True
+        print("✅ RAG system loaded from rag path")
+    except ImportError:
+        try:
+            import sys
+            sys.path.insert(0, os.path.join(parent_dir, 'rag'))
+            from airline_industry_rag import AirlineIndustryRAG
+            RAG_AVAILABLE = True
+            print("✅ RAG system loaded with explicit path")
+        except ImportError:
+            RAG_AVAILABLE = False
+            print("❌ RAG system not available")
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "your_openai_api_key_here")
 
 class CreditRatingDashboard:
@@ -69,6 +150,22 @@ class CreditRatingDashboard:
         self.risk_scorer = None
         self.current_scores = None
         self.historical_data = None
+        
+        # Initialize RAG system
+        if RAG_AVAILABLE and OPENAI_API_KEY != "your_openai_api_key_here":
+            try:
+                self.rag_system = AirlineIndustryRAG(OPENAI_API_KEY)
+                self.rag_available = True
+                print("✅ RAG system initialized successfully")
+            except Exception as e:
+                print(f"❌ RAG system initialization failed: {e}")
+                self.rag_available = False
+        else:
+            self.rag_available = False
+            if not RAG_AVAILABLE:
+                print("❌ RAG system not available")
+            if OPENAI_API_KEY == "your_openai_api_key_here":
+                print("❌ OpenAI API key not set")
         
         # Initialize session state
         if 'last_update' not in st.session_state:
@@ -95,21 +192,109 @@ class CreditRatingDashboard:
             st.session_state.alerts_threshold_value = None
         if 'models_loaded_status' not in st.session_state:
             st.session_state.models_loaded_status = False
+        if 'rag_context' not in st.session_state:
+            st.session_state.rag_context = None
+        if 'rag_last_update' not in st.session_state:
+            st.session_state.rag_last_update = None
     
     def load_models(self):
         """Load and initialize risk scoring models"""
         
+        logger.info("[LOAD_MODELS] Starting model loading process...")
+        
         if not MODEL_AVAILABLE:
+            logger.error("[LOAD_MODELS] Models not available")
             st.error("Models not available")
             return False
         
         try:
+            logger.info("[LOAD_MODELS] Creating spinner for model loading...")
             with st.spinner("🏋️ Loading risk scoring models..."):
-                self.risk_scorer = RatingRiskScorer()
+                logger.info("[LOAD_MODELS] Initializing RatingRiskScorer...")
+                
+                # 안전한 모델 로딩 (캐시 우선, 필요시에만 DART 데이터 수집)
+                try:
+                    # 타임아웃 설정을 위한 시도 횟수 제한
+                    max_retries = 2
+                    retry_count = 0
+                    
+                    while retry_count < max_retries:
+                        try:
+                            logger.info(f"[LOAD_MODELS] Attempt {retry_count + 1} to create RatingRiskScorer...")
+                            
+                            # 메모리 사용량 모니터링
+                            import psutil
+                            process = psutil.Process()
+                            memory_before = process.memory_info().rss / 1024 / 1024  # MB
+                            logger.info(f"[LOAD_MODELS] Memory usage before: {memory_before:.2f} MB")
+                            
+                            # RatingRiskScorer 생성 (타임아웃 보호)
+                            import signal
+                            import threading
+                            import time
+                            
+                            # 타임아웃 설정 (5분)
+                            timeout_seconds = 300
+                            result = [None]
+                            exception = [None]
+                            
+                            def create_scorer():
+                                try:
+                                    result[0] = RatingRiskScorer(use_financial_data=True)
+                                except Exception as e:
+                                    exception[0] = e
+                            
+                            # 별도 스레드에서 실행
+                            thread = threading.Thread(target=create_scorer)
+                            thread.daemon = True
+                            thread.start()
+                            
+                            # 타임아웃 대기
+                            thread.join(timeout_seconds)
+                            
+                            if thread.is_alive():
+                                logger.error(f"[LOAD_MODELS] Timeout after {timeout_seconds} seconds")
+                                st.error(f"❌ Model loading timed out after {timeout_seconds} seconds")
+                                return False
+                            
+                            if exception[0] is not None:
+                                raise exception[0]
+                            
+                            self.risk_scorer = result[0]
+                            
+                            # 메모리 사용량 확인
+                            memory_after = process.memory_info().rss / 1024 / 1024  # MB
+                            logger.info(f"[LOAD_MODELS] Memory usage after: {memory_after:.2f} MB")
+                            logger.info(f"[LOAD_MODELS] Memory increase: {memory_after - memory_before:.2f} MB")
+                            
+                            logger.info("[LOAD_MODELS] RatingRiskScorer created successfully")
+                            break
+                            
+                        except Exception as e:
+                            retry_count += 1
+                            logger.warning(f"[LOAD_MODELS] Attempt {retry_count} failed: {e}")
+                            
+                            if retry_count >= max_retries:
+                                logger.error(f"[LOAD_MODELS] All {max_retries} attempts failed")
+                                raise e
+                            
+                            # 재시도 전 잠시 대기
+                            time.sleep(2)
+                    
+                except Exception as model_error:
+                    logger.error(f"[LOAD_MODELS] Model loading failed: {model_error}")
+                    st.warning(f"⚠️ Model loading failed: {model_error}")
+                    st.info("💡 Using sample data for demonstration")
+                    return False
+                    
+            logger.info("[LOAD_MODELS] Model loading completed successfully")
             st.success("✅ Models loaded successfully")
             return True
+            
         except Exception as e:
+            logger.error(f"[LOAD_MODELS] Error loading models: {e}")
             st.error(f"❌ Error loading models: {e}")
+            st.info("💡 Using sample data for demonstration")
             return False
     
     def get_sample_firms(self) -> List[FirmProfile]:
@@ -220,65 +405,51 @@ class CreditRatingDashboard:
     def generate_gpt4_report(self, prompt: str, context_data: str) -> str:
         """Generate comprehensive report using GPT-4-Turbo for bank loan officers"""
         
-        full_prompt = f"""
-        당신은 한국의 시중은행에서 20년 경력을 가진 기업금융 대출심사 팀장입니다. 
-        항공업계 대출심사와 기업여신 관리를 전문으로 하며, 아래 신용위험 데이터를 분석하여 
-        대출담당 직원들이 실무에서 바로 활용할 수 있는 상세한 여신심사 레포트를 작성해주세요.
-
-        분석 요청: {prompt}
-
-        대시보드 표시 데이터 (전체):
-        {context_data}
-
-        다음 형식으로 여신심사 관점의 레포트를 작성해주세요:
-
-        ## 🏦 여신심사 종합의견
-        - 대출실행 관련 핵심 판단사항 (승인/보류/거절 권고)
-        - 신용등급 변동 가능성에 따른 여신리스크 평가
-        - 담보 및 보증 요구사항 검토 필요성
-
-        ## 📊 재무건전성 분석
-        - 각 항공사별 신용도 상세 평가 (등급별 차등 분석)
-        - 단기/중기/장기 시계열 위험도 변화 추이 분석
-        - 업계 내 상대적 신용위험 순위 및 벤치마킹
-        - 재무비율 기반 상환능력 평가
-
-        ## ⚠️ 여신관리 주의사항
-        - 즉시 여신한도 조정이 필요한 거래처 식별
-        - 담보인정비율(LTV) 조정 검토 대상
-        - 추가 담보제공 요구 또는 보증인 확보 필요 기업
-        - 여신회수 및 출구전략 준비가 필요한 고위험 거래처
-
-        ## 🎯 대출심사 실행방안
-        - 신규 대출신청시 심사 포인트 및 승인조건
-        - 기존 여신의 연장/갱신시 고려사항
-        - 금리 차등적용 및 수수료 조정 방향
-        - 여신약정서 특약조항 추가 검토사항
-        - 사후관리 모니터링 주기 및 점검 항목
-
-        ## 📈 포트폴리오 관리 전략
-        - 항공업계 여신 포트폴리오의 위험분산 현황 평가
-        - 업종 집중도 리스크 및 분산투자 필요성
-        - 경기변동 및 유가변동에 따른 시나리오별 대응방안
-        - 규제당국 건전성 지표 관리 관점의 권고사항
-
-        은행 실무진이 즉시 활용할 수 있도록 구체적인 수치, 비율, 임계값을 명시하고, 
-        여신규정과 리스크관리 기준에 부합하는 실무적 판단근거를 상세히 제시해주세요.
-        과도한 요약보다는 충분한 설명과 근거를 포함해주세요.
-        """
-        
         if not OPENAI_AVAILABLE:
             return "❌ OpenAI 패키지가 설치되지 않았습니다. `pip install openai`로 설치해주세요."
+        
+        # RAG 컨텍스트 추가
+        rag_context = ""
+        if self.rag_available:
+            try:
+                rag_context = self.rag_system.get_prompt_context()
+            except Exception as e:
+                st.warning(f"⚠️ RAG 컨텍스트 로드 오류: {e}")
+        
+        # 프롬프트 매니저 사용
+        if PROMPT_MANAGER_AVAILABLE:
+            try:
+                prompt_manager = get_prompt_manager()
+                system_prompts = prompt_manager.get_system_prompt("comprehensive_report")
+                system_prompt = {"role": "system", "content": system_prompts.get("comprehensive_report", "당신은 한국 시중은행의 기업금융 대출심사 전문가입니다.")}
+                user_prompt = prompt_manager.get_user_prompt("comprehensive_report", 
+                                                           prompt=prompt, 
+                                                           context_data=context_data)
+                
+                # RAG 컨텍스트를 사용자 프롬프트에 추가
+                if rag_context:
+                    user_prompt += f"\n\n{rag_context}"
+                    
+            except Exception as e:
+                st.warning(f"⚠️ 프롬프트 매니저 오류, 기본 프롬프트 사용: {e}")
+                # 기본 프롬프트로 폴백
+                system_prompt = {"role": "system", "content": "당신은 한국 시중은행의 기업금융 대출심사 전문가입니다."}
+                user_prompt = f"분석 요청: {prompt}\n\n대시보드 데이터: {context_data}"
+                if rag_context:
+                    user_prompt += f"\n\n{rag_context}"
+        else:
+            # 기본 프롬프트 사용
+            system_prompt = {"role": "system", "content": "당신은 한국 시중은행의 기업금융 대출심사 전문가입니다."}
+            user_prompt = f"분석 요청: {prompt}\n\n대시보드 데이터: {context_data}"
+            if rag_context:
+                user_prompt += f"\n\n{rag_context}"
         
         try:
             client = OpenAI(api_key=OPENAI_API_KEY)
             
             response = client.chat.completions.create(
                 model="gpt-4-turbo-preview",
-                messages=[
-                    {"role": "system", "content": "당신은 한국 시중은행의 기업금융 대출심사 전문가로서 20년 경력을 보유하고 있습니다. 항공업계 여신업무를 전문으로 합니다."},
-                    {"role": "user", "content": full_prompt}
-                ],
+                messages=[system_prompt, {"role": "user", "content": user_prompt}],
                 max_tokens=4096,
                 temperature=0.7
             )
@@ -334,148 +505,65 @@ class CreditRatingDashboard:
                 """
             detailed_firm_info.append(firm_detail)
         
-        prompt = f"""
-한국 시중은행의 기업금융팀장으로서, 항공업계 전문 대출심사위원회에 제출할 종합 신용위험 분석 리포트를 작성해주세요.
-
-## 📊 현재 데이터 현황
-- **분석 대상**: 한국 항공업계 선별 {len(risk_df)}개 기업 ({', '.join(firm_names)})
-- **분석 기준일**: {datetime.now().strftime('%Y년 %m월 %d일')}
-- **위험도 측정**: 90일 신용등급 변동 확률 기준
-- **평균 90일 위험도**: {avg_risk:.3%}
-- **고위험 기업 수**: {len(high_risk_firms)}개 (임계값 {RISK_THRESHOLD:.1%} 초과)
-- **최고 위험 기업**: {max_risk_firm['company_name']} ({max_risk_firm['overall_risk']:.3%})
-- **최저 위험 기업**: {min_risk_firm['company_name']} ({min_risk_firm['overall_risk']:.3%})
-- **포트폴리오 위험분산도**: 표준편차 {risk_df['overall_risk'].std():.3%}
-
-## 💼 기업별 상세 정보
-{''.join(detailed_firm_info)}
-
-## 📈 주요 발견사항 및 시장 동향
-
-### 🔺 업그레이드 후보 기업 (등급 개선 가능성):
-{upgrade_candidates[['company_name', 'upgrade_prob', 'current_rating']].to_string() if not upgrade_candidates.empty else "현재 등급 개선이 예상되는 기업 없음"}
-
-### 🔻 다운그레이드 위험 기업 (등급 악화 우려):
-{downgrade_risks[['company_name', 'downgrade_prob', 'current_rating']].to_string() if not downgrade_risks.empty else "현재 등급 악화가 우려되는 기업 없음"}
-
-### 📊 포트폴리오 위험 분포:
-- 위험도 1사분위: {risk_df['overall_risk'].quantile(0.25):.3%}
-- 위험도 2사분위(중위값): {risk_df['overall_risk'].quantile(0.5):.3%}
-- 위험도 3사분위: {risk_df['overall_risk'].quantile(0.75):.3%}
-
-### ⚠️ 최근 알림 이력 및 모니터링 현황:
-{f"최근 {len(recent_alerts)}건의 고위험 알림 발생 - 시스템 활성 모니터링 중" if recent_alerts else "최근 알림 없음 - 포트폴리오 안정적 운영"}
-
-## 📋 종합 분석 리포트 요청사항
-
-다음 구조로 **상세한 종합 분석 리포트**를 작성해주세요:
-
-### 1. 🎯 **핵심 요약** (Executive Summary)
-- 선별 분석한 {len(risk_df)}개 항공사의 전반적 신용위험 수준 평가
-- 업계 특성을 고려한 주요 우려사항 5가지 (코로나19 회복, 유가변동, 국제선 재개, 경쟁심화, 탄소중립 규제)
-- 즉시 조치가 필요한 긴급 사항 및 단기 액션 플랜
-- 포트폴리오 관점에서의 전체 위험도 평가 및 분산도 분석
-
-### 2. 📊 **기업별 심층 신용 평가**
-각 분석 대상 기업에 대해 다음 항목을 상세히 분석:
-- **현재 신용등급 및 90일 위험도 평가**
-- **재무건전성 종합 점수** (부채관리능력, 수익성, 안정성, 성장성)
-- **구체적 대출 권고사항**: 
-  * ✅ **승인권고** (신용도 우수, 조건 완화 가능)
-  * ⚠️ **조건부승인** (추가 담보/보증, 금리 상향, 한도 제한)
-  * ❌ **거부권고** (높은 신용위험, 여신회수 검토)
-- **권고 근거**: 정량적 재무지표, 정성적 시장상황, 업종별 리스크 요인
-- **모니터링 주기**: 월간/분기간/반기간 점검 계획
-- **출구전략**: 위험도 악화시 여신회수 및 담보실행 방안
-
-### 3. 🔍 **항공업계 트렌드 및 거시환경 분석**
-- **코로나19 회복 현황**: 국내선/국제선 수요 회복세, 백신여권 효과
-- **유가 변동 영향**: 국제 원유가격 변화가 항공사별 비용구조에 미치는 영향
-- **국제선 재개 현황**: 노선별 재개 일정, 정부 방역정책 변화 영향
-- **업계 경쟁구도 변화**: 저비용항공사 확산, 대형항공사 시장점유율 변화
-- **ESG 및 탄소중립**: 친환경 항공기 도입, 탄소세 도입 대비책
-- **정부 정책 변화**: 항공산업 지원정책, 공항 운영 정책 변화
-
-### 4. ⚡ **즉시 실행 액션 아이템** (체크리스트 형태)
-**A. 고위험 기업 관리:**
-- [ ] {max_risk_firm['company_name']} 추가 담보/보증 확보 (위험도 {max_risk_firm['overall_risk']:.1%})
-- [ ] 고위험 3개사 대상 월간 재무제표 제출 의무화
-- [ ] 신용등급 하락시 자동 여신한도 축소 장치 설정
-- [ ] 부도위험 기업 대상 보증보험 가입 검토
-
-**B. 포트폴리오 관리:**
-- [ ] 항공업종 여신 집중도 한도 재설정 (현재 집중도 검토)
-- [ ] 업종 내 위험분산을 위한 우량 기업 여신 확대 검토
-- [ ] 유가헤지 등 리스크 완화 상품 활용 의무화 검토
-- [ ] 계절성 요인을 고려한 유동성 공급 계획 수립
-
-**C. 모니터링 체계:**
-- [ ] 실시간 신용위험 모니터링 시스템 구축
-- [ ] 월간 항공업계 동향 보고서 작성 체계 확립
-- [ ] 유가/환율 변동시 스트레스 테스트 정기 실시
-- [ ] 경쟁사 대비 상대적 신용도 변화 추적 시스템 도입
-
-### 5. 🎲 **향후 3개월 시나리오별 예측 및 대응방안**
-
-**🟢 낙관 시나리오 (확률 30%): 국제선 재개 가속화**
-- 위험도 개선 예상 기업: [구체적 기업명과 개선폭 제시]
-- 여신 확대 검토 대상 및 신규 여신 기회
-- 금리 인하 혜택 적용 기업 선별
-
-**🟡 기본 시나리오 (확률 50%): 점진적 회복세 지속**
-- 현상 유지 예상 기업들의 안정적 관리 방안
-- 기존 여신조건 유지하되 모니터링 강화
-- 분기별 재평가를 통한 조건 조정 검토
-
-**🔴 비관 시나리오 (확률 20%): 추가 변이 발생 등 재악화**
-- 위험도 급속 악화 우려 기업 및 선제적 대응책
-- 여신회수 및 구조조정 지원 방안
-- 정부 지원정책 연계를 통한 손실 최소화 전략
-
-### 6. 💡 **종합 리스크 완화 전략**
-
-**A. 포트폴리오 다각화:**
-- 항공업종 내 세부 업종별 분산 (대형항공사 vs 저비용항공사)
-- 지역별 노선 특성을 고려한 위험분산 (국내선 vs 국제선)
-- 항공기 리스 vs 운항 전문 기업 간 위험분산
-
-**B. 헤지상품 및 보험 활용:**
-- 유가연동 파생상품을 통한 연료비 헤지 의무화
-- 신용보증기금/기술보증기금 연계 보증 확대
-- 무역보험공사 해외투자보험 등 정책보험 활용
-
-**C. 업계 전문 모니터링 체계:**
-- 항공교통량, 유가지수, 환율 등 핵심지표 실시간 추적
-- 국제항공운송협회(IATA) 등 글로벌 동향 분석 체계
-- 동종업계 타행 여신동향 및 부실률 벤치마킹
-- 정기적인 항공업계 전문가 자문회의 운영
-
-### 7. 🏦 **은행 내부 관리 방안**
-- 여신심사역 대상 항공업계 전문교육 실시
-- 리스크관리 시스템 내 항공업종 특화 모델 구축
-- 감독당국 보고용 업종별 건전성 지표 관리 체계
-- 이사회 보고용 분기별 업종 리스크 현황 보고서 양식 표준화
-
-**작성시 주의사항:**
-1. 모든 수치는 소수점 3자리까지 정확히 제시
-2. 구체적 기업명과 함께 실행 가능한 권고사항 명시
-3. 은행 내부 승인 프로세스를 고려한 실무적 관점 반영
-4. 각 섹션을 충분한 분량으로 상세히 작성 (요약보다는 구체적 설명 중심)
-5. 표, 리스트, 체크박스를 적극 활용하여 가독성 확보
-6. 정량적 분석과 정성적 판단을 균형있게 포함
-7. 시장 상황 변화에 따른 동적 대응 방안 포함
-
-이 리포트는 대출심사위원회에서 즉시 의사결정에 활용될 예정이므로, 실무진과 경영진 모두가 납득할 수 있는 종합적이고 실행 가능한 분석 리포트로 작성해주세요.
-"""
+        # RAG 컨텍스트 추가
+        rag_context = ""
+        if self.rag_available:
+            try:
+                rag_context = self.rag_system.get_prompt_context()
+            except Exception as e:
+                st.warning(f"⚠️ RAG 컨텍스트 로드 오류: {e}")
+        
+        # 프롬프트 매니저 사용
+        if PROMPT_MANAGER_AVAILABLE:
+            try:
+                prompt_manager = get_prompt_manager()
+                system_prompts = prompt_manager.get_system_prompt("comprehensive_report")
+                system_prompt = {"role": "system", "content": system_prompts.get("comprehensive_report", "당신은 한국 시중은행의 기업금융팀장입니다.")}
+                user_prompt = prompt_manager.get_user_prompt("comprehensive_report",
+                    company_count=len(risk_df),
+                    company_names=', '.join(firm_names),
+                    current_date=datetime.now().strftime('%Y년 %m월 %d일'),
+                    avg_risk=avg_risk,
+                    high_risk_count=len(high_risk_firms),
+                    risk_threshold=RISK_THRESHOLD,
+                    max_risk_company=max_risk_firm['company_name'],
+                    max_risk_value=max_risk_firm['overall_risk'],
+                    min_risk_company=min_risk_firm['company_name'],
+                    min_risk_value=min_risk_firm['overall_risk'],
+                    risk_std=risk_df['overall_risk'].std(),
+                    detailed_firm_info=''.join(detailed_firm_info),
+                    upgrade_candidates_info=upgrade_candidates[['company_name', 'upgrade_prob', 'current_rating']].to_string() if not upgrade_candidates.empty else "현재 등급 개선이 예상되는 기업 없음",
+                    downgrade_risks_info=downgrade_risks[['company_name', 'downgrade_prob', 'current_rating']].to_string() if not downgrade_risks.empty else "현재 등급 악화가 우려되는 기업 없음",
+                    risk_q25=risk_df['overall_risk'].quantile(0.25),
+                    risk_q50=risk_df['overall_risk'].quantile(0.5),
+                    risk_q75=risk_df['overall_risk'].quantile(0.75),
+                    recent_alerts_info=f"최근 {len(recent_alerts)}건의 고위험 알림 발생 - 시스템 활성 모니터링 중" if recent_alerts else "최근 알림 없음 - 포트폴리오 안정적 운영"
+                )
+                
+                # RAG 컨텍스트를 사용자 프롬프트에 추가
+                if rag_context:
+                    user_prompt += f"\n\n{rag_context}"
+                    
+            except Exception as e:
+                st.warning(f"⚠️ 프롬프트 매니저 오류, 기본 프롬프트 사용: {e}")
+                # 기본 프롬프트로 폴백
+                system_prompt = {"role": "system", "content": "당신은 한국 시중은행의 기업금융팀장입니다."}
+                user_prompt = f"항공업계 신용위험 분석 리포트를 작성해주세요. 데이터: {risk_df.to_string()}"
+                if rag_context:
+                    user_prompt += f"\n\n{rag_context}"
+        else:
+            # 기본 프롬프트 사용
+            system_prompt = {"role": "system", "content": "당신은 한국 시중은행의 기업금융팀장입니다."}
+            user_prompt = f"항공업계 신용위험 분석 리포트를 작성해주세요. 데이터: {risk_df.to_string()}"
+            if rag_context:
+                user_prompt += f"\n\n{rag_context}"
 
         try:
             client = OpenAI(api_key=OPENAI_API_KEY)
+            
             response = client.chat.completions.create(
                 model="gpt-4-turbo-preview",
-                messages=[
-                    {"role": "system", "content": "당신은 한국 시중은행의 기업금융팀장으로서 20년 경력의 항공업계 여신 전문가입니다. 실무진과 경영진이 모두 납득할 수 있는 종합적이고 실행 가능한 분석 리포트를 작성합니다."},
-                    {"role": "user", "content": prompt}
-                ],
+                messages=[system_prompt, {"role": "user", "content": user_prompt}],
                 max_tokens=4096,  # 토큰 제한 문제 해결
                 temperature=0.7
             )
@@ -1113,7 +1201,11 @@ class CreditRatingDashboard:
         st.sidebar.subheader("📊 Data Source")
         
         try:
-            from config import USE_REAL_DATA
+            # Try different import paths for config
+            try:
+                from config.config import USE_REAL_DATA
+            except ImportError:
+                from config import USE_REAL_DATA
             if USE_REAL_DATA:
                 st.sidebar.success("🎯 **Real DART Data Mode**")
                 st.sidebar.info("Using actual financial statements from DART API")
@@ -1170,9 +1262,20 @@ class CreditRatingDashboard:
             # Note: In production, you'd implement proper auto-refresh
         
         # DART 데이터 캐시 관리
-        if CACHE_AVAILABLE:
             st.sidebar.markdown("---")
             st.sidebar.subheader("💾 DART 데이터 캐시")
+        
+        # 캐시 시스템 상태 표시
+        if CACHE_AVAILABLE:
+            st.sidebar.success("✅ 캐시 시스템 활성화")
+            
+            # 캐시 활성화/비활성화 토글
+            cache_enabled = st.sidebar.checkbox(
+                "💾 캐시 시스템 사용", 
+                value=True, 
+                key="cache_enabled_checkbox",
+                help="DART API 데이터를 캐시하여 중복 요청을 방지합니다"
+            )
             
             try:
                 cache = get_global_cache()
@@ -1209,6 +1312,12 @@ class CreditRatingDashboard:
                             st.info("🔍 삭제할 항목 없음")
                         st.rerun()
                 
+                # 캐시 설정 정보
+                with st.sidebar.expander("⚙️ 캐시 설정"):
+                    st.text(f"📁 캐시 디렉토리: {cache.cache_dir}")
+                    st.text(f"⏱️ 캐시 유효시간: {cache.cache_duration.total_seconds() / 3600:.1f}시간")
+                    st.text(f"📊 메타데이터 파일: {os.path.basename(cache.metadata_file)}")
+                
                 # 캐시 세부 정보 (확장 가능)
                 with st.sidebar.expander("📋 캐시 세부 정보"):
                     entries = cache.list_cached_entries()
@@ -1225,7 +1334,130 @@ class CreditRatingDashboard:
             except Exception as e:
                 st.sidebar.error(f"캐시 정보 로드 실패: {e}")
         else:
-            st.sidebar.warning("💾 캐시 시스템 비활성화")
+            st.sidebar.error("❌ 캐시 시스템 비활성화")
+            st.sidebar.info("""
+            **캐시 시스템 활성화 방법:**
+            1. `src/data/dart_data_cache.py` 파일이 존재하는지 확인
+            2. Python 경로 설정 확인
+            3. 대시보드 재시작
+            """)
+        
+        # RAG 시스템 관리
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔍 RAG 시스템 (항공업계 검색)")
+        
+        if self.rag_available:
+            st.sidebar.success("✅ RAG 시스템 활성화")
+            
+            try:
+                # RAG 캐시 정보
+                cache_info = self.rag_system.get_cache_info()
+                
+                # RAG 상태 표시
+                status_icon = "✅" if cache_info['cache_valid'] else "⏰"
+                st.sidebar.info(f"""
+                **🔍 RAG 시스템 현황**
+                - 상태: {status_icon} {'최신 정보' if cache_info['cache_valid'] else '업데이트 필요'}
+                - 마지막 업데이트: {cache_info['last_update']}
+                - 처리된 기사: {cache_info['articles_processed']}개
+                - 상태: {cache_info['status']}
+                """)
+                
+                # RAG 정보 업데이트 버튼
+                if st.sidebar.button("🔄 항공업계 정보 업데이트", key="update_rag_btn", help="최신 항공업계 정보를 검색하고 요약합니다"):
+                    with st.spinner("항공업계 정보 검색 및 요약 중..."):
+                        try:
+                            context = self.rag_system.get_airline_industry_context(force_update=True)
+                            st.session_state.rag_context = context
+                            st.session_state.rag_last_update = datetime.now()
+                            st.success("✅ 항공업계 정보 업데이트 완료")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ 업데이트 실패: {e}")
+                
+                # RAG 상세 정보
+                with st.sidebar.expander("📋 RAG 상세 정보"):
+                    if st.session_state.rag_context:
+                        context = st.session_state.rag_context
+                        st.text("**검색 키워드:**")
+                        for keyword in context.get('search_keywords', [])[:3]:
+                            st.text(f"• {keyword}")
+                        
+                        st.text("**핵심 포인트:**")
+                        for point in context.get('key_points', [])[:3]:
+                            st.text(f"• {point}")
+                        
+                        st.text("**정보 출처:**")
+                        for source in context.get('sources', [])[:2]:
+                            st.text(f"• {source[:50]}...")
+                    else:
+                        st.text("RAG 정보가 없습니다")
+                
+                # RAG 설정
+                with st.sidebar.expander("⚙️ RAG 설정"):
+                    st.text(f"📁 캐시 디렉토리: {self.rag_system.cache_dir}")
+                    st.text(f"⏱️ 캐시 유효시간: {self.rag_system.cache_duration}")
+                    st.text(f"🔍 검색 엔진: 네이버 뉴스 + 구글")
+                    st.text(f"📝 요약 모델: GPT-4o-mini")
+                        
+            except Exception as e:
+                st.sidebar.error(f"RAG 시스템 오류: {e}")
+        else:
+            st.sidebar.error("❌ RAG 시스템 비활성화")
+            st.sidebar.info("""
+            **RAG 시스템 활성화 방법:**
+            1. `src/rag/` 디렉토리가 존재하는지 확인
+            2. OpenAI API 키가 설정되어 있는지 확인
+            3. 필요한 패키지 설치: `pip install requests beautifulsoup4`
+            4. 대시보드 재시작
+            """)
+        
+        # 프롬프트 관리 시스템 UI
+        st.sidebar.subheader("🤖 GPT 프롬프트 관리")
+        
+        if PROMPT_MANAGER_AVAILABLE:
+            st.sidebar.success("✅ 프롬프트 매니저 활성화")
+            
+            try:
+                prompt_manager = get_prompt_manager()
+                prompt_info = prompt_manager.get_prompt_info()
+                
+                # 프롬프트 시스템 정보 표시
+                st.sidebar.info(f"""
+                **📊 프롬프트 현황**
+                - 현재 날짜: {prompt_info['market_context']['current_date']}
+                - 시장 단계: {prompt_info['market_context']['market_phase']}
+                - 사용 가능한 프롬프트: {len(prompt_info['available_prompt_types'])}개
+                - 마지막 업데이트: {prompt_info['last_updated'][:19]}
+                """)
+                
+                # 시장 컨텍스트 업데이트 버튼
+                if st.sidebar.button("🔄 시장 컨텍스트 업데이트", key="update_market_context_btn", help="현재 시장 상황을 반영하여 프롬프트를 업데이트합니다"):
+                    prompt_manager.update_market_context()
+                    st.success("✅ 시장 컨텍스트 업데이트 완료")
+                    st.rerun()
+                
+                # 프롬프트 설정 정보
+                with st.sidebar.expander("⚙️ 프롬프트 설정"):
+                    st.text(f"📁 프롬프트 디렉토리: {prompt_info['prompts_directory']}")
+                    st.text(f"📊 주요 우려사항: {', '.join(prompt_info['market_context']['key_concerns'][:3])}...")
+                    st.text(f"🎲 시나리오 확률: 낙관 {prompt_info['market_context']['scenario_probabilities']['optimistic']*100:.0%}, 기본 {prompt_info['market_context']['scenario_probabilities']['baseline']*100:.0%}, 비관 {prompt_info['market_context']['scenario_probabilities']['pessimistic']*100:.0%}")
+                
+                # 시장 트렌드 정보
+                with st.sidebar.expander("📈 시장 트렌드"):
+                    for trend in prompt_info['market_context']['industry_trends']:
+                        st.text(f"• {trend}")
+                
+            except Exception as e:
+                st.sidebar.error(f"프롬프트 매니저 오류: {e}")
+        else:
+            st.sidebar.error("❌ 프롬프트 매니저 비활성화")
+            st.sidebar.info("""
+            **프롬프트 매니저 활성화 방법:**
+            1. `config/prompts.py` 파일이 존재하는지 확인
+            2. Python 경로 설정 확인
+            3. 대시보드 재시작
+            """)
         
         # Main content
         if not MODEL_AVAILABLE:
@@ -1508,7 +1740,11 @@ class CreditRatingDashboard:
         
         # Show data source information
         try:
-            from config import USE_REAL_DATA
+            # Try different import paths for config
+            try:
+                from config.config import USE_REAL_DATA
+            except ImportError:
+                from config import USE_REAL_DATA
             data_source = "🎯 Real DART Financial Data" if USE_REAL_DATA else "⚡ Fast Dummy Data (Development Mode)"
         except ImportError:
             data_source = "⚡ Fast Dummy Data (Development Mode)"

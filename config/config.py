@@ -13,6 +13,16 @@ Author: Korean Airlines Credit Rating Analysis
 
 import os
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Environment variables loaded from .env file")
+except ImportError:
+    print("⚠️ python-dotenv not available, using system environment variables only")
+except Exception as e:
+    print(f"⚠️ Error loading .env file: {e}")
+
 # DART Open API Configuration
 DART_API_KEY = os.getenv("DART_API_KEY", "your_dart_api_key_here")
 
@@ -25,7 +35,7 @@ SLACK_WEBHOOK_URL = ""
 # Data Source Configuration
 # Set to False for fast dummy data during development
 # Set to True for real DART financial data in production
-USE_REAL_DATA = False  # 🔄 Toggle this for development vs production
+USE_REAL_DATA = os.getenv("USE_REAL_DATA", "True").lower() in ("true", "1", "yes", "on")
 
 # Korean Airlines Stock Codes
 KOREAN_AIRLINES = {

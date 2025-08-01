@@ -49,26 +49,45 @@ class DARTDataCache:
     
     def _load_metadata(self) -> Dict[str, Any]:
         """캐시 메타데이터 로드"""
+        logger.info(f"📖 [CACHE] Loading metadata from: {self.metadata_file}")
+        
         if os.path.exists(self.metadata_file):
             try:
+                logger.info(f"✅ [CACHE] Metadata file exists, loading...")
                 with open(self.metadata_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    metadata = json.load(f)
+                logger.info(f"✅ [CACHE] Metadata loaded successfully: {len(metadata.get('entries', {}))} entries")
+                return metadata
+            except json.JSONDecodeError as e:
+                logger.error(f"❌ [CACHE] JSON decode error loading metadata: {e}")
+                logger.error(f"📁 [CACHE] Corrupted metadata file: {self.metadata_file}")
             except Exception as e:
-                logger.warning(f"Failed to load cache metadata: {e}")
+                logger.error(f"❌ [CACHE] Failed to load cache metadata: {e}")
+                import traceback
+                logger.error(f"❌ [CACHE] Traceback: {traceback.format_exc()}")
+        else:
+            logger.info(f"📝 [CACHE] Metadata file not found, creating new metadata")
         
-        return {
+        # 새로운 메타데이터 생성
+        new_metadata = {
             "cache_created": datetime.now().isoformat(),
             "total_entries": 0,
             "entries": {}
         }
+        logger.info(f"✅ [CACHE] Created new metadata")
+        return new_metadata
     
     def _save_metadata(self):
         """캐시 메타데이터 저장"""
         try:
+            logger.debug(f"💾 [CACHE] Saving metadata to: {self.metadata_file}")
             with open(self.metadata_file, 'w', encoding='utf-8') as f:
                 json.dump(self.metadata, f, ensure_ascii=False, indent=2)
+            logger.debug(f"✅ [CACHE] Metadata saved successfully")
         except Exception as e:
-            logger.error(f"Failed to save cache metadata: {e}")
+            logger.error(f"❌ [CACHE] Failed to save cache metadata: {e}")
+            import traceback
+            logger.error(f"❌ [CACHE] Traceback: {traceback.format_exc()}")
     
     def _generate_cache_key(self, corp_code: str, year: int, quarter: int, data_type: str = "financial") -> str:
         """캐시 키 생성"""
@@ -81,50 +100,115 @@ class DARTDataCache:
     
     def is_cache_valid(self, cache_key: str) -> bool:
         """캐시 유효성 검사"""
-        if cache_key not in self.metadata["entries"]:
-            return False
-        
-        entry = self.metadata["entries"][cache_key]
-        cached_time = datetime.fromisoformat(entry["cached_at"])
-        
-        return datetime.now() - cached_time < self.cache_duration
-    
-    def get_cached_data(self, corp_code: str, year: int, quarter: int, data_type: str = "financial") -> Optional[pd.DataFrame]:
-        """캐시된 데이터 조회"""
-        cache_key = self._generate_cache_key(corp_code, year, quarter, data_type)
-        
-        if not self.is_cache_valid(cache_key):
-            return None
-        
-        cache_file = self._get_cache_file_path(cache_key)
-        
-        if not os.path.exists(cache_file):
-            # 메타데이터는 있지만 파일이 없는 경우
-            logger.warning(f"Cache metadata exists but file missing: {cache_key}")
-            self._remove_cache_entry(cache_key)
-            return None
-        
         try:
-            with open(cache_file, 'rb') as f:
-                data = pickle.load(f)
+            logger.debug(f"🔍 [CACHE] Checking validity for key: {cache_key}")
             
-            # 액세스 시간 업데이트
-            self.metadata["entries"][cache_key]["last_accessed"] = datetime.now().isoformat()
-            self._save_metadata()
+            if cache_key not in self.metadata["entries"]:
+                logger.debug(f"❌ [CACHE] Key not found in metadata: {cache_key}")
+                return False
             
-            logger.info(f"📦 Cache hit: {corp_code} {year}Q{quarter} ({data_type})")
-            return data
+            entry = self.metadata["entries"][cache_key]
+            cached_time = datetime.fromisoformat(entry["cached_at"])
+            current_time = datetime.now()
+            age = current_time - cached_time
+            
+            logger.debug(f"🕐 [CACHE] Cache age: {age}, duration limit: {self.cache_duration}")
+            
+            is_valid = age < self.cache_duration
+            logger.debug(f"{'✅' if is_valid else '❌'} [CACHE] Cache validity: {is_valid}")
+            
+            return is_valid
             
         except Exception as e:
-            logger.error(f"Failed to load cached data: {e}")
-            self._remove_cache_entry(cache_key)
+            logger.error(f"❌ [CACHE] Error checking cache validity: {e}")
+            return False
+    
+    def get_cached_data(self, corp_code: str, year: int, quarter: int, data_type: str = "financial") -> Optional[Any]:
+        """캐시된 데이터 조회"""
+        try:
+            logger.info(f"🔍 [CACHE] get_cached_data called: {corp_code} {year}Q{quarter} ({data_type})")
+            
+            cache_key = self._generate_cache_key(corp_code, year, quarter, data_type)
+            logger.info(f"🔑 [CACHE] Generated cache key: {cache_key}")
+            
+            # 캐시 유효성 검사
+            logger.info(f"✅ [CACHE] Checking cache validity for key: {cache_key}")
+            if not self.is_cache_valid(cache_key):
+                logger.info(f"❌ [CACHE] Cache not valid for key: {cache_key}")
+                return None
+            
+            logger.info(f"✅ [CACHE] Cache is valid for key: {cache_key}")
+            
+            cache_file = self._get_cache_file_path(cache_key)
+            logger.info(f"📁 [CACHE] Cache file path: {cache_file}")
+            
+            if not os.path.exists(cache_file):
+                # 메타데이터는 있지만 파일이 없는 경우
+                logger.warning(f"❌ [CACHE] Cache metadata exists but file missing: {cache_key}")
+                logger.warning(f"📁 [CACHE] Missing file: {cache_file}")
+                self._remove_cache_entry(cache_key)
+                return None
+            
+            logger.info(f"✅ [CACHE] Cache file exists: {cache_file}")
+            
+            # 파일 크기 확인
+            file_size = os.path.getsize(cache_file)
+            logger.info(f"📊 [CACHE] Cache file size: {file_size} bytes")
+            
+            if file_size == 0:
+                logger.warning(f"⚠️ [CACHE] Cache file is empty: {cache_file}")
+                self._remove_cache_entry(cache_key)
+                return None
+            
+            try:
+                logger.info(f"📖 [CACHE] Loading cache file: {cache_file}")
+                with open(cache_file, 'rb') as f:
+                    data = pickle.load(f)
+                
+                logger.info(f"✅ [CACHE] Successfully loaded cache data: {type(data)}")
+                
+                # 액세스 시간 업데이트
+                logger.info(f"🕐 [CACHE] Updating access time for key: {cache_key}")
+                self.metadata["entries"][cache_key]["last_accessed"] = datetime.now().isoformat()
+                self._save_metadata()
+                
+                logger.info(f"📦 [CACHE] Cache hit: {corp_code} {year}Q{quarter} ({data_type})")
+                return data
+                
+            except pickle.UnpicklingError as e:
+                logger.error(f"❌ [CACHE] Pickle unpickling error: {e}")
+                logger.error(f"📁 [CACHE] Corrupted cache file: {cache_file}")
+                self._remove_cache_entry(cache_key)
+                return None
+            except EOFError as e:
+                logger.error(f"❌ [CACHE] EOF error reading cache file: {e}")
+                logger.error(f"📁 [CACHE] Incomplete cache file: {cache_file}")
+                self._remove_cache_entry(cache_key)
+                return None
+            except Exception as e:
+                logger.error(f"❌ [CACHE] Failed to load cached data: {e}")
+                logger.error(f"📁 [CACHE] Error reading cache file: {cache_file}")
+                import traceback
+                logger.error(f"❌ [CACHE] Traceback: {traceback.format_exc()}")
+                self._remove_cache_entry(cache_key)
+                return None
+                
+        except Exception as e:
+            logger.error(f"❌ [CACHE] get_cached_data failed: {e}")
+            import traceback
+            logger.error(f"❌ [CACHE] Traceback: {traceback.format_exc()}")
             return None
     
-    def cache_data(self, corp_code: str, year: int, quarter: int, data: pd.DataFrame, 
+    def cache_data(self, corp_code: str, year: int, quarter: int, data: Any, 
                    data_type: str = "financial", company_name: str = "") -> bool:
         """데이터 캐시 저장"""
-        if data is None or data.empty:
+        if data is None:
             logger.warning(f"Empty data provided for caching: {corp_code} {year}Q{quarter}")
+            return False
+        
+        # DataFrame인 경우에만 empty 체크
+        if hasattr(data, 'empty') and data.empty:
+            logger.warning(f"Empty DataFrame provided for caching: {corp_code} {year}Q{quarter}")
             return False
         
         cache_key = self._generate_cache_key(corp_code, year, quarter, data_type)
@@ -146,13 +230,14 @@ class DARTDataCache:
                 "cached_at": now,
                 "last_accessed": now,
                 "file_size": os.path.getsize(cache_file),
-                "record_count": len(data)
+                "record_count": len(data) if hasattr(data, '__len__') else 1
             }
             
             self.metadata["total_entries"] = len(self.metadata["entries"])
             self._save_metadata()
             
-            logger.info(f"💾 Cached: {corp_code} {year}Q{quarter} ({data_type}) - {len(data)} records")
+            record_count = len(data) if hasattr(data, '__len__') else 1
+            logger.info(f"💾 Cached: {corp_code} {year}Q{quarter} ({data_type}) - {record_count} records")
             return True
             
         except Exception as e:

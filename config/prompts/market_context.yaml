@@ -1,0 +1,19 @@
+current_date: 2025년 08월 01일
+industry_trends:
+- 항공업계 디지털 전환 가속화
+- 친환경 항공기 도입 확대
+- 저비용 항공사 시장 점유율 증가
+- 국제선 수요 회복세 지속
+key_concerns:
+- 글로벌 경기침체 영향
+- 유가변동
+- 환율리스크
+- 경쟁심화
+- 탄소중립 규제
+- 금리환경
+- AI/디지털화
+market_phase: recovery
+scenario_probabilities:
+  baseline: 0.5
+  optimistic: 0.3
+  pessimistic: 0.2

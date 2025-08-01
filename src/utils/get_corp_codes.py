@@ -12,7 +12,16 @@ Author: Korean Airlines Credit Rating Analysis
 """
 
 import sys
-from config import DART_API_KEY, KOREAN_AIRLINES
+try:
+    from config.config import DART_API_KEY, KOREAN_AIRLINES
+except ImportError:
+    # Fallback for different import paths
+    try:
+        from config import DART_API_KEY, KOREAN_AIRLINES
+    except ImportError:
+        print("⚠️ Configuration file not found. Please ensure config.py exists with DART_API_KEY and KOREAN_AIRLINES defined.")
+        DART_API_KEY = None
+        KOREAN_AIRLINES = {}
 
 try:
     from dart_fss import set_api_key, get_corp_list

@@ -25,14 +25,19 @@ from tqdm import tqdm
 
 # 설정 및 매핑 정보 import
 from config import DART_API_KEY, FINANCIAL_RATIOS, DATA_START_YEAR, DATA_END_YEAR, QUARTERS
-from korean_airlines_corp_codes import KOREAN_AIRLINES_CORP_MAPPING, get_corp_code
+try:
+    from ..utils.korean_airlines_corp_codes import KOREAN_AIRLINES_CORP_MAPPING, get_corp_code
+except ImportError:
+    try:
+        from utils.korean_airlines_corp_codes import KOREAN_AIRLINES_CORP_MAPPING, get_corp_code
+    except ImportError:
+        from korean_airlines_corp_codes import KOREAN_AIRLINES_CORP_MAPPING, get_corp_code
 
 try:
     import dart_fss as fss
-    from dart_fss import set_api_key
+    from dart_fss import set_api_key, extract
     # 올바른 모듈 import
     from dart_fss.corp import Corp
-    from dart_fss.fs import extract as fs_extract
     DART_FSS_AVAILABLE = True
     print("✅ dart-fss 모듈 로드 성공")
 except ImportError as e:
@@ -114,12 +119,27 @@ class FinancialDataETL:
                 else:  # quarter == 4
                     end_date = f"{year}1231"
                 
-                # 재무제표 추출 (연결재무제표 우선)
-                fs_data = fs_extract(
+                # 재무제표 추출 (연결재무제표 우선) - 날짜 범위 수정
+                if quarter == 4:
+                    # 4분기는 연간보고서로 처리
+                    bgn_date = f"{year}0101"
+                    report_type = 'annual'
+                else:
+                    # 분기별 보고서
+                    if quarter == 1:
+                        bgn_date = f"{year}0101"
+                    elif quarter == 2:
+                        bgn_date = f"{year}0401"
+                    else:  # quarter == 3
+                        bgn_date = f"{year}0701"
+                    report_type = 'quarter'
+                
+                fs_data = extract(
                     corp_code=corp_code,
-                    bgn_de=end_date,
+                    bgn_de=bgn_date,
                     end_de=end_date,
-                    fs_div='CFS'  # 연결재무제표
+                    separate=False,  # 연결재무제표 (False), 개별재무제표 (True)
+                    report_tp=report_type  # 분기별 또는 연간
                 )
                 
                 if fs_data is not None and not fs_data.empty:
@@ -131,11 +151,12 @@ class FinancialDataETL:
                     
                 else:
                     # 연결재무제표가 없으면 개별재무제표 시도
-                    fs_data = fs_extract(
+                    fs_data = extract(
                         corp_code=corp_code,
-                        bgn_de=end_date,
+                        bgn_de=bgn_date,  # 위에서 계산된 시작 날짜 사용
                         end_de=end_date,
-                        fs_div='OFS'  # 개별재무제표
+                        separate=True,  # 개별재무제표
+                        report_tp=report_type  # 위에서 계산된 보고서 타입 사용
                     )
                     
                     if fs_data is not None and not fs_data.empty:

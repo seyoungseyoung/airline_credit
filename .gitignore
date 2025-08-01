@@ -118,6 +118,7 @@ Thumbs.db
 # Project specific
 financial_data/
 dart_cache/
+rag_cache/
 *.log
 pipeline.log
 backup/
