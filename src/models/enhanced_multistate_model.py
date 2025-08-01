@@ -715,6 +715,23 @@ class EnhancedMultiStateModel:
                         
                         api_calls += 1
                         print(f"  📡 API call successful for {company_name} {year}")
+                        
+                        # 🔥 캐시 저장 추가 - DART API 결과를 캐시에 저장
+                        try:
+                            cache_saved = cache.cache_data(
+                                corp_code=corp_code,
+                                year=year,
+                                quarter=0,  # 연간 데이터
+                                data=fs_data,
+                                data_type="annual",
+                                company_name=company_name
+                            )
+                            if cache_saved:
+                                print(f"  💾 Cached DART data for {company_name} {year}")
+                            else:
+                                print(f"  ⚠️ Failed to cache DART data for {company_name} {year}")
+                        except Exception as cache_error:
+                            print(f"  ⚠️ Cache save error for {company_name} {year}: {cache_error}")
                     
                     # 재무비율 계산 (타임아웃 보호)
                     try:
