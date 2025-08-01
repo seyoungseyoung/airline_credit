@@ -716,13 +716,62 @@ class EnhancedMultiStateModel:
                         api_calls += 1
                         print(f"  📡 API call successful for {company_name} {year}")
                         
-                        # 🔥 캐시 저장 추가 - DART API 결과를 캐시에 저장
+                        # 🔥 캐시 저장 추가 - FinancialStatement를 dict로 변환해서 저장
                         try:
+                            # FinancialStatement 객체를 직렬화 가능한 dict로 변환
+                            cache_data = {
+                                'company_name': company_name,
+                                'year': year,
+                                'bs_data': {},  # Balance Sheet
+                                'is_data': {},  # Income Statement  
+                                'cf_data': {},  # Cash Flow
+                                'metadata': {
+                                    'corp_code': corp_code,
+                                    'cached_at': datetime.now().isoformat(),
+                                    'data_type': 'annual'
+                                }
+                            }
+                            
+                            # FinancialStatement에서 실제 재무제표 데이터 추출
+                            try:
+                                # 재무상태표 데이터 추출
+                                if hasattr(fs_data, 'show'):
+                                    bs_df = fs_data.show('bs')
+                                    if bs_df is not None and not bs_df.empty:
+                                        # DataFrame을 dict로 변환 (최신값만)
+                                        if len(bs_df.columns) > 0:
+                                            latest_col = bs_df.columns[-1]  # 최신 연도 데이터
+                                            cache_data['bs_data'] = bs_df[latest_col].dropna().to_dict()
+                                    
+                                    # 손익계산서 데이터 추출
+                                    is_df = fs_data.show('is')
+                                    if is_df is None:
+                                        is_df = fs_data.show('cis')  # Comprehensive Income Statement
+                                    if is_df is not None and not is_df.empty:
+                                        if len(is_df.columns) > 0:
+                                            latest_col = is_df.columns[-1]
+                                            cache_data['is_data'] = is_df[latest_col].dropna().to_dict()
+                                    
+                                    # 현금흐름표 데이터 추출
+                                    cf_df = fs_data.show('cf')
+                                    if cf_df is not None and not cf_df.empty:
+                                        if len(cf_df.columns) > 0:
+                                            latest_col = cf_df.columns[-1]
+                                            cache_data['cf_data'] = cf_df[latest_col].dropna().to_dict()
+                                
+                                print(f"  📊 Extracted: BS={len(cache_data['bs_data'])}, IS={len(cache_data['is_data'])}, CF={len(cache_data['cf_data'])}")
+                                
+                            except Exception as extract_error:
+                                print(f"  ⚠️ Error extracting financial data: {extract_error}")
+                                # 추출 실패 시 원본 객체 정보라도 저장
+                                cache_data['raw_data_type'] = str(type(fs_data))
+                                cache_data['available_methods'] = [method for method in dir(fs_data) if not method.startswith('_')]
+                            
                             cache_saved = cache.cache_data(
                                 corp_code=corp_code,
                                 year=year,
                                 quarter=0,  # 연간 데이터
-                                data=fs_data,
+                                data=cache_data,  # 변환된 dict 저장
                                 data_type="annual",
                                 company_name=company_name
                             )
@@ -732,6 +781,8 @@ class EnhancedMultiStateModel:
                                 print(f"  ⚠️ Failed to cache DART data for {company_name} {year}")
                         except Exception as cache_error:
                             print(f"  ⚠️ Cache save error for {company_name} {year}: {cache_error}")
+                            import traceback
+                            print(f"  📋 Cache error details: {traceback.format_exc()}")
                     
                     # 재무비율 계산 (타임아웃 보호)
                     try:

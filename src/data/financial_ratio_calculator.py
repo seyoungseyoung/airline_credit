@@ -370,7 +370,7 @@ class FinancialRatioCalculator:
         하나의 회사 재무제표 데이터를 처리하여 모든 재무비율 계산
         
         Args:
-            fs_data: FinancialStatement 객체
+            fs_data: FinancialStatement 객체 또는 캐시된 dict 데이터
         
         Returns:
             Dict[str, float]: 계산된 모든 재무비율
@@ -378,17 +378,41 @@ class FinancialRatioCalculator:
         
         print("📊 재무제표 데이터 처리 시작...")
         
-        # 1. 재무상태표 항목 추출
-        bs_items = self.extract_financial_items(fs_data, 'bs')
-        print(f"📋 재무상태표: {len(bs_items)}개 항목")
-        
-        # 2. 손익계산서 항목 추출 (있는 경우)
-        is_items = self.extract_financial_items(fs_data, 'is')
-        print(f"📈 손익계산서: {len(is_items)}개 항목")
-        
-        # 3. 현금흐름표 항목 추출 (있는 경우)
-        cf_items = self.extract_financial_items(fs_data, 'cf')
-        print(f"💰 현금흐름표: {len(cf_items)}개 항목")
+        # 캐시된 dict 데이터인지 확인
+        if isinstance(fs_data, dict):
+            print("📦 캐시된 dict 데이터 처리 중...")
+            
+            # dict에서 재무제표 데이터 추출
+            bs_items = fs_data.get('bs_data', {})
+            is_items = fs_data.get('is_data', {})
+            cf_items = fs_data.get('cf_data', {})
+            
+            # 기존 dict 구조와 호환성 확보
+            for key in ['bs', 'is_', 'cf']:
+                if key in fs_data and isinstance(fs_data[key], dict):
+                    if key == 'bs':
+                        bs_items.update(fs_data[key])
+                    elif key == 'is_':
+                        is_items.update(fs_data[key])
+                    elif key == 'cf':
+                        cf_items.update(fs_data[key])
+            
+            print(f"📦 캐시 데이터: BS={len(bs_items)}, IS={len(is_items)}, CF={len(cf_items)}")
+            
+        else:
+            print("📊 FinancialStatement 객체 처리 중...")
+            
+            # 1. 재무상태표 항목 추출
+            bs_items = self.extract_financial_items(fs_data, 'bs')
+            print(f"📋 재무상태표: {len(bs_items)}개 항목")
+            
+            # 2. 손익계산서 항목 추출 (있는 경우)
+            is_items = self.extract_financial_items(fs_data, 'is')
+            print(f"📈 손익계산서: {len(is_items)}개 항목")
+            
+            # 3. 현금흐름표 항목 추출 (있는 경우)
+            cf_items = self.extract_financial_items(fs_data, 'cf')
+            print(f"💰 현금흐름표: {len(cf_items)}개 항목")
         
         # 4. 재무비율 계산
         ratios = self.calculate_financial_ratios(bs_items, is_items, cf_items)
