@@ -919,14 +919,17 @@ class EnhancedMultiStateModel:
                 to_rating = next_obs['RatingNumber']
                 duration = (next_obs['Date'] - current_obs['Date']).days / 365.25
                 
-                # Classify transition type
-                if to_rating == 7:  # Default
+                # Classify transition type based on rating symbols (not hardcoded numbers)
+                to_symbol = next_obs['RatingSymbol']
+                from_symbol = current_obs['RatingSymbol']
+                
+                if to_symbol == 'D':
                     transition_type = StateDefinition.DEFAULT
-                elif to_rating == 8:  # Withdrawn/NR
+                elif to_symbol in {'WD', 'NR'}:
                     transition_type = StateDefinition.WITHDRAWN
-                elif to_rating < from_rating:  # Upgrade
+                elif to_rating < from_rating:  # Upgrade (lower number = better rating)
                     transition_type = StateDefinition.UPGRADE
-                elif to_rating > from_rating:  # Downgrade
+                elif to_rating > from_rating:  # Downgrade (higher number = worse rating)
                     transition_type = StateDefinition.DOWNGRADE
                 else:  # Same rating
                     transition_type = StateDefinition.STABLE
@@ -1002,8 +1005,9 @@ class EnhancedMultiStateModel:
         df['default_event'] = (df['transition_type'] == StateDefinition.DEFAULT).astype(int)
         df['withdrawn_event'] = (df['transition_type'] == StateDefinition.WITHDRAWN).astype(int)
         
-        # Create rating category dummies
-        for rating in range(8):
+        # Create rating category dummies for all possible ratings (0~22)
+        max_rating = int(df['from_rating'].max()) if not df.empty else 22
+        for rating in range(max_rating + 1):
             df[f'from_rating_{rating}'] = (df['from_rating'] == rating).astype(int)
         
         self.survival_data = df

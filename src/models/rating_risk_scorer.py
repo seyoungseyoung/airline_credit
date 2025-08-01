@@ -418,16 +418,24 @@ class RatingRiskScorer:
                 
                 print(f"  {transition_name}: Λ={cum_hazard:.4f}, P={trans_prob:.4f}")
         
-        # Calculate overall rating change probability P(Δrating≠0 ≤ horizon)
-        # This is 1 - P(rating stays stable)
-        stable_prob = risk_scores.get('stable_probability', 0.0)  # This would be from a "stable" model
+        # Calculate overall rating change probability using model-based survival analysis
+        # Overall Risk = 1 - S(t) where S(t) is survival probability (staying in current state)
+        # This captures the multi-state nature: Upgrade + Downgrade + Default + Withdrawn
         
-        # Calculate overall rating change probability
-        change_prob = sum([prob for key, prob in risk_scores.items() 
-                          if 'probability' in key and 'stable' not in key])
+        # Method 1: Sum of competing risks (current approach, but improved)
+        individual_risks = [prob for key, prob in risk_scores.items() 
+                          if 'probability' in key and 'stable' not in key]
         
-        # Ensure probabilities are reasonable
-        change_prob = min(0.95, max(0.01, change_prob))
+        # Method 2: Convert cumulative hazards to overall survival probability  
+        total_cumulative_hazard = sum(cumulative_hazards.values())
+        survival_prob = np.exp(-total_cumulative_hazard)  # S(t) = exp(-Λ(t))
+        overall_risk_from_survival = 1.0 - survival_prob  # Overall Risk = 1 - S(t)
+        
+        # Use the survival-based calculation as it's theoretically more sound
+        change_prob = overall_risk_from_survival
+        
+        # Ensure probabilities are reasonable (but allow higher values for high-risk firms)
+        change_prob = min(0.99, max(0.001, change_prob))
         
         # Apply WD+NR risk adjustment if applicable
         overall_change_prob = change_prob  # Use the calculated change probability

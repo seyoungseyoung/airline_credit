@@ -200,8 +200,13 @@ class CreditRatingPreprocessor:
         """Calculate risk scores with WD+NR adjustment"""
         df_scored = df.copy()
         
-        # Base risk score (inverse of rating numeric)
-        df_scored['base_risk'] = 1 / df_scored['rating_numeric']
+        # Find max rating number for normalization
+        max_rating_numeric = df_scored['rating_numeric'].max()
+        if pd.isna(max_rating_numeric):
+            max_rating_numeric = 22  # Default max rating
+        
+        # Base risk score (higher number = higher risk, intuitive direction)
+        df_scored['base_risk'] = df_scored['rating_numeric'] / max_rating_numeric
         
         # Apply WD+NR risk multiplier
         wd_nr_mask = (df_scored['state'] == 'WD') & (df_scored['nr_flag'] == 1)
@@ -213,7 +218,7 @@ class CreditRatingPreprocessor:
         regular_mask = ~wd_nr_mask
         df_scored.loc[regular_mask, 'risk_score'] = df_scored.loc[regular_mask, 'base_risk']
         
-        logger.info("Calculated risk scores with WD+NR adjustment")
+        logger.info("Calculated risk scores with WD+NR adjustment (corrected direction: higher number = higher risk)")
         return df_scored
     
     def detect_alert_conditions(self, df: pd.DataFrame) -> List[Dict]:
