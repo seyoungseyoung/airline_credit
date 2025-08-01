@@ -1130,6 +1130,40 @@ class EnhancedMultiStateModel:
                 
                 if len(model_data) == 0 or model_data[event_col].sum() == 0:
                     print(f"⚠️ [COX MODELS] No events for {transition_name} transition")
+                    print(f"🔧 [COX MODELS] Creating fallback model for {transition_name}...")
+                    
+                    # Create fallback time-dependent hazard model
+                    class FallbackTimeDepModel:
+                        def __init__(self, base_hazard=0.15):
+                            self.base_hazard = base_hazard
+                            self.baseline_hazard_ = lambda t: self.base_hazard
+                            self.params_ = pd.Series([0.0])  # Dummy parameters
+                            
+                        def predict_cumulative_hazard(self, X, times):
+                            return pd.DataFrame(self.base_hazard * times, index=times)
+                        
+                        def predict_survival_function(self, X, times):
+                            """Predict survival function S(t) = exp(-Λ(t))"""
+                            import numpy as np
+                            hazards = self.predict_cumulative_hazard(X, times)
+                            return np.exp(-hazards)
+                        
+                        def predict_partial_hazard(self, X):
+                            """Predict partial hazard (always 1.0 for fallback)"""
+                            return pd.Series([1.0] * len(X), index=X.index)
+                    
+                    # Set base hazards by transition type
+                    base_hazards = {
+                        'upgrade': 0.12,      # 12% base upgrade hazard
+                        'downgrade': 0.15,    # 15% base downgrade hazard  
+                        'default': 0.02,      # 2% base default hazard
+                        'withdrawn': 0.01     # 1% base withdrawn hazard
+                    }
+                    
+                    fallback_model = FallbackTimeDepModel(base_hazards.get(transition_name, 0.10))
+                    self.cox_models[transition_name] = fallback_model
+                    
+                    print(f"✅ [COX MODELS] Fallback model created for {transition_name} with base hazard {base_hazards.get(transition_name, 0.10)}")
                     continue
                 
                 # Remove covariates with very low variance (< 1e-10)

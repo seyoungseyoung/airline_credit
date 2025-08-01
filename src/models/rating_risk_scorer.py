@@ -176,17 +176,38 @@ class RatingRiskScorer:
         raise NotImplementedError("Model loading not yet implemented")
     
     def _firm_to_covariates(self, firm: FirmProfile) -> pd.Series:
-        """Convert firm profile to model covariates"""
+        """Convert firm profile to model covariates using risk categories"""
         
         # Convert rating to number if string
         if isinstance(firm.current_rating, str):
-            current_rating = self.rating_mapping.get(firm.current_rating, 3)  # Default to BBB
+            current_rating = self.rating_mapping.get(firm.current_rating, 8)  # Default to BBB
         else:
             current_rating = firm.current_rating
         
-        # Create covariate series
+        # Use unified rating mapping for consistency
+        from utils.rating_mapping import UnifiedRatingMapping
+        rating_symbol = UnifiedRatingMapping.get_rating_symbol(current_rating)
+        
+        # Create risk category dummy variables
+        risk_categories = {}
+        for category in UnifiedRatingMapping.RISK_CATEGORIES.keys():
+            cat_col = f'risk_category_{category.lower().replace(" ", "_")}'
+            risk_categories[cat_col] = 0
+        
+        # Set the appropriate category
+        if rating_symbol:
+            risk_category = UnifiedRatingMapping.get_risk_category(rating_symbol)
+            if risk_category:
+                cat_col = f'risk_category_{risk_category.lower().replace(" ", "_")}'
+                risk_categories[cat_col] = 1
+        
+        # Create covariate series with risk categories + financial ratios
         covariates = pd.Series({
-            'from_rating': current_rating,
+            # Risk category variables (new approach)
+            **risk_categories,
+            'investment_grade': 1 if rating_symbol and UnifiedRatingMapping.is_investment_grade(rating_symbol) else 0,
+            
+            # Financial ratios
             'debt_to_assets': firm.debt_to_assets,
             'current_ratio': firm.current_ratio,
             'roa': firm.roa,
