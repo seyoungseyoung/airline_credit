@@ -1004,6 +1004,13 @@ class CreditRatingDashboard:
         horizons = [30, 60, 90, 120, 180, 270, 365]
         colors = px.colors.qualitative.Set1
         
+        # 🔧 Data collection for dynamic scaling
+        all_overall_risks = []
+        all_upgrade_probs = []
+        all_downgrade_probs = []
+        all_default_probs = []
+        firm_data = []  # Store data for each firm
+        
         for i, firm in enumerate(firms):
             if self.risk_scorer is None:
                 continue
@@ -1016,17 +1023,58 @@ class CreditRatingDashboard:
             for horizon in horizons:
                 try:
                     risk_assessment = self.risk_scorer.score_firm(firm, horizon=horizon)
-                    overall_risks.append(risk_assessment['overall_change_probability'])
-                    upgrade_probs.append(risk_assessment['upgrade_probability'])
-                    downgrade_probs.append(risk_assessment['downgrade_probability'])
-                    default_probs.append(risk_assessment['default_probability'])
-                except:
+                    
+                    # 🔍 DEBUG: Graph value check
+                    print(f"  🔍 GRAPH DEBUG {firm.company_name} @ {horizon}d:")
+                    print(f"    - Overall: {risk_assessment['overall_change_probability']:.6f}")
+                    print(f"    - Upgrade: {risk_assessment['upgrade_probability']:.6f}")  
+                    print(f"    - Downgrade: {risk_assessment['downgrade_probability']:.6f}")
+                    print(f"    - Default: {risk_assessment['default_probability']:.6f}")
+                    
+                    overall_risk = risk_assessment['overall_change_probability']
+                    upgrade_prob = risk_assessment['upgrade_probability']
+                    downgrade_prob = risk_assessment['downgrade_probability']
+                    default_prob = risk_assessment['default_probability']
+                    
+                    overall_risks.append(overall_risk)
+                    upgrade_probs.append(upgrade_prob)
+                    downgrade_probs.append(downgrade_prob)
+                    default_probs.append(default_prob)
+                    
+                    # 🔧 Collect all values for dynamic scaling
+                    all_overall_risks.append(overall_risk)
+                    all_upgrade_probs.append(upgrade_prob)
+                    all_downgrade_probs.append(downgrade_prob)
+                    all_default_probs.append(default_prob)
+                    
+                except Exception as e:
+                    print(f"⚠️ Error getting risk assessment for {firm.company_name}: {e}")
                     # Fallback to simulated curves
                     base_risk = 0.05 + i * 0.02
-                    overall_risks.append(base_risk * (1 + horizon/365))
-                    upgrade_probs.append(base_risk * 0.6 * (1 + horizon/365))
-                    downgrade_probs.append(base_risk * 0.4 * (1 + horizon/365))
-                    default_probs.append(base_risk * 0.1 * (1 + horizon/365))
+                    overall_risk = base_risk * (1 + horizon/365)
+                    upgrade_prob = base_risk * 0.6 * (1 + horizon/365)
+                    downgrade_prob = base_risk * 0.4 * (1 + horizon/365)
+                    default_prob = base_risk * 0.1 * (1 + horizon/365)
+                    
+                    overall_risks.append(overall_risk)
+                    upgrade_probs.append(upgrade_prob)
+                    downgrade_probs.append(downgrade_prob)
+                    default_probs.append(default_prob)
+                    
+                    # Collect fallback values too
+                    all_overall_risks.append(overall_risk)
+                    all_upgrade_probs.append(upgrade_prob)
+                    all_downgrade_probs.append(downgrade_prob)
+                    all_default_probs.append(default_prob)
+            
+            # Store data for this firm
+            firm_data.append({
+                'name': firm.company_name,
+                'overall_risks': overall_risks,
+                'upgrade_probs': upgrade_probs,
+                'downgrade_probs': downgrade_probs,
+                'default_probs': default_probs
+            })
             
             color = colors[i % len(colors)]
             
@@ -1065,11 +1113,50 @@ class CreditRatingDashboard:
             showlegend=True
         )
         
-        # Update axes
-        for i in range(1, 3):
-            for j in range(1, 3):
-                fig.update_xaxes(title_text="Days", row=i, col=j)
-                fig.update_yaxes(title_text="Probability", row=i, col=j)
+        # 🔧 Dynamic scale calculation with safety margins
+        def calculate_dynamic_range(values, margin_factor=0.1, min_range=0.01):
+            """Calculate dynamic range with margin"""
+            if not values or all(v == 0 for v in values):
+                return [0, min_range]
+            
+            min_val = min(values)
+            max_val = max(values)
+            
+            # Add margin (10% by default)
+            value_range = max_val - min_val
+            margin = max(value_range * margin_factor, min_range * 0.1)
+            
+            # Ensure minimum range for visibility
+            if value_range < min_range:
+                center = (min_val + max_val) / 2
+                return [max(0, center - min_range/2), center + min_range/2]
+            
+            return [max(0, min_val - margin), max_val + margin]
+        
+        # Calculate dynamic ranges for each subplot
+        overall_range = calculate_dynamic_range(all_overall_risks, margin_factor=0.15)
+        upgrade_range = calculate_dynamic_range(all_upgrade_probs, margin_factor=0.2, min_range=0.01)
+        downgrade_range = calculate_dynamic_range(all_downgrade_probs, margin_factor=0.15)
+        default_range = calculate_dynamic_range(all_default_probs, margin_factor=0.3, min_range=0.005)
+        
+        print(f"🔧 Dynamic ranges calculated:")
+        print(f"  Overall: [{overall_range[0]:.4f}, {overall_range[1]:.4f}]")
+        print(f"  Upgrade: [{upgrade_range[0]:.4f}, {upgrade_range[1]:.4f}]")
+        print(f"  Downgrade: [{downgrade_range[0]:.4f}, {downgrade_range[1]:.4f}]")
+        print(f"  Default: [{default_range[0]:.6f}, {default_range[1]:.6f}]")
+        
+        # Update axes with dynamic scales
+        fig.update_xaxes(title_text="Days", row=1, col=1)
+        fig.update_yaxes(title_text="Probability", range=overall_range, row=1, col=1)
+        
+        fig.update_xaxes(title_text="Days", row=1, col=2)
+        fig.update_yaxes(title_text="Probability", range=upgrade_range, row=1, col=2)
+        
+        fig.update_xaxes(title_text="Days", row=2, col=1)
+        fig.update_yaxes(title_text="Probability", range=downgrade_range, row=2, col=1)
+        
+        fig.update_xaxes(title_text="Days", row=2, col=2)
+        fig.update_yaxes(title_text="Probability", range=default_range, row=2, col=2)
         
         return fig
     
@@ -1561,7 +1648,7 @@ class CreditRatingDashboard:
                         return 'background-color: #fff2cc'
                     return ''
                 
-                return df.style.applymap(highlight_risk, subset=['overall_risk', 'downgrade_prob'])
+                return df.style.map(highlight_risk, subset=['overall_risk', 'downgrade_prob'])
             
             # Display table
             st.dataframe(
