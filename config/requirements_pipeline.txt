@@ -1,43 +1,64 @@
 # Additional requirements for Korean Airlines Data Pipeline
 # Install with: pip install -r requirements_pipeline.txt
 
-# DART Open API client
-opendart-python>=1.1.0
-
-# Alternative DART client
-# dart-fss>=0.5.0
+# DART API client (available in PyPI)
+dart-fss>=0.4.13
 
 # Data processing
-requests>=2.28.0
-beautifulsoup4>=4.11.0
-lxml>=4.9.0
+requests>=2.32.4
+beautifulsoup4>=4.13.4
+lxml>=5.4.0
 
 # Excel/CSV handling
-openpyxl>=3.0.0
+openpyxl>=3.1.5
 xlrd>=2.0.0
 
 # Date handling
-python-dateutil>=2.8.2
+python-dateutil>=2.9.0
 
 # Web scraping (for rating collection)
-selenium>=4.0.0
-webdriver-manager>=3.8.0
+selenium>=4.21.0
+webdriver-manager>=4.0.2
 
 # Alternative HTTP client
-httpx>=0.24.0
-
-# Korean text processing (if needed)
-konlpy>=0.6.0
+httpx>=0.28.1
 
 # Database support (optional)
 sqlalchemy>=1.4.0
 pymongo>=4.0.0
 
 # Configuration management
-python-dotenv>=0.19.0
+python-dotenv>=1.1.1
 
 # Retry logic for API calls  
-tenacity>=8.0.0
+tenacity>=9.1.2
 
 # Progress bars
-tqdm>=4.64.0 
+tqdm>=4.67.1
+
+# Survival analysis
+lifelines>=0.30.0
+scikit-survival>=0.24.1
+
+# AI/ML
+openai>=1.97.1
+scikit-learn>=1.6.1
+
+# Visualization
+plotly>=6.2.0
+altair>=5.5.0
+pydeck>=0.9.1
+
+# Jupyter and development
+ipython>=8.37.0
+ipywidgets>=8.1.7
+jupyterlab>=4.4.5
+notebook>=7.4.4
+
+# Utilities
+watchdog>=6.0.0
+gitpython>=3.1.45
+fake-useragent>=2.2.0
+xmltodict>=0.14.2
+yaspin>=3.1.0
+pymsm>=0.0.3 

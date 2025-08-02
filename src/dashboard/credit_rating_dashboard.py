@@ -114,8 +114,13 @@ except ImportError:
         PROMPT_MANAGER_AVAILABLE = True
         print("✅ Prompt manager loaded with explicit path")
     except ImportError:
-        PROMPT_MANAGER_AVAILABLE = False
-        print("❌ Prompt manager not available")
+        try:
+            from config.prompts import get_prompt_manager
+            PROMPT_MANAGER_AVAILABLE = True
+            print("✅ Prompt manager loaded from config.prompts")
+        except ImportError:
+            PROMPT_MANAGER_AVAILABLE = False
+            print("❌ Prompt manager not available")
 
 # Import RAG system
 try:
@@ -135,8 +140,13 @@ except ImportError:
             RAG_AVAILABLE = True
             print("✅ RAG system loaded with explicit path")
         except ImportError:
-            RAG_AVAILABLE = False
-            print("❌ RAG system not available")
+            try:
+                from src.rag.airline_industry_rag import AirlineIndustryRAG
+                RAG_AVAILABLE = True
+                print("✅ RAG system loaded from src.rag")
+            except ImportError:
+                RAG_AVAILABLE = False
+                print("❌ RAG system not available")
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "your_openai_api_key_here")
 

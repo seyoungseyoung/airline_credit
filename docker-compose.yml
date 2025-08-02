@@ -1,0 +1,54 @@
+services:
+  credit-rating-app:
+    build: .
+    container_name: credit_rating_transition
+    ports:
+      - "8501:8501"
+    volumes:
+      # Mount data directories for persistence
+      - ./data:/app/data
+      - ./rag_cache:/app/rag_cache
+      # Mount config for easy updates
+      - ./config:/app/config
+      # Mount environment file
+      - ./.env:/app/.env
+    environment:
+      - PYTHONPATH=/app
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a Jupyter notebook service for development
+  jupyter:
+    build: .
+    container_name: credit_rating_jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./data:/app/data
+      - ./rag_cache:/app/rag_cache
+      - ./config:/app/config
+      - ./.env:/app/.env
+    environment:
+      - PYTHONPATH=/app
+    env_file:
+      - .env
+    command: >
+      conda run -n credit_rating_transition
+      jupyter notebook
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --NotebookApp.token=''
+      --NotebookApp.password=''
+    profiles:
+      - development 
