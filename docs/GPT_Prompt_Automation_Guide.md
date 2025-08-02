@@ -93,167 +93,71 @@ scenario_probabilities:
   pessimistic: 0.20   # 글로벌 경기침체 심화
 ```
 
-### 미래 시장 상황 (기본값)
+## 🔍 프롬프트 템플릿 예시
 
-```yaml
-market_phase: "stable"
-key_concerns:
-  - "경제 불확실성"
-  - "유가변동"
-  - "환율리스크"
-  - "규제 변화"
-```
-
-## 🔄 프롬프트 업데이트 프로세스
-
-### 1. **자동 업데이트**
-- 시스템 시작시 자동으로 현재 날짜 감지
-- 연도별 시장 상황 자동 분석
-- 프롬프트 파일 자동 생성
-
-### 2. **수동 업데이트**
-- 대시보드 사이드바의 "🔄 시장 컨텍스트 업데이트" 버튼
-- `prompt_manager.update_market_context()` 메서드 호출
-
-### 3. **파일 직접 수정**
-- `config/prompts/` 디렉토리의 JSON/YAML 파일 직접 편집
-- 변경사항은 즉시 반영됨
-
-## 📝 프롬프트 템플릿 수정
-
-### 시스템 프롬프트 수정
-
-`config/prompts/system_prompts.json` 파일을 편집:
-
+### 시스템 프롬프트 템플릿
 ```json
 {
   "credit_analysis": {
     "role": "system",
-    "content_template": "당신은 한국 시중은행의 기업금융 대출심사 전문가입니다. 현재 날짜는 {current_date}입니다."
+    "content": "당신은 한국 시중은행의 기업금융 대출심사 전문가입니다. 현재 날짜는 {current_date}이며, 시장 상황은 {market_phase}입니다. 주요 우려사항: {key_concerns}",
+    "variables": ["current_date", "market_phase", "key_concerns"]
   }
 }
 ```
 
-### 사용자 프롬프트 수정
-
-`config/prompts/user_prompts.json` 파일을 편집:
-
+### 사용자 프롬프트 템플릿
 ```json
 {
   "credit_analysis": {
-    "template": "분석 요청: {prompt}\n\n데이터: {context_data}"
+    "role": "user",
+    "content": "다음 데이터를 바탕으로 신용위험을 분석해주세요: {context_data}",
+    "variables": ["context_data"]
   }
 }
 ```
 
-## 🛠️ 고급 설정
+## 🎯 활용 시나리오
 
-### 1. **새로운 프롬프트 타입 추가**
+### 1. **일일 분석**
+- 현재 시장 상황을 반영한 프롬프트로 분석
+- 실시간 경제 지표 반영
 
+### 2. **시나리오 분석**
+- 낙관/기본/비관 시나리오별 프롬프트 생성
+- 확률 기반 가중치 적용
+
+### 3. **업계별 분석**
+- 항공업계 특화 프롬프트
+- 업계별 주요 이슈 반영
+
+## 🔧 설정 및 커스터마이징
+
+### 프롬프트 디렉토리 설정
 ```python
-# prompts.py에 새로운 프롬프트 타입 추가
-def _create_system_prompts(self):
-    system_prompts = {
-        "credit_analysis": { ... },
-        "comprehensive_report": { ... },
-        "new_prompt_type": {
-            "role": "system",
-            "content_template": "새로운 프롬프트 템플릿 {variable}"
-        }
-    }
+# config/config.py
+PROMPT_DIRECTORY = "config/prompts"
+DEFAULT_SYSTEM_PROMPT = "credit_analysis"
+CACHE_ENABLED = True
 ```
 
-### 2. **커스텀 시장 컨텍스트**
+### 새로운 프롬프트 추가
+1. `config/prompts/system_prompts.json`에 새 템플릿 추가
+2. `config/prompts/user_prompts.json`에 대응하는 사용자 프롬프트 추가
+3. 프롬프트 매니저에서 새 프롬프트 사용
 
-```python
-def _get_current_market_context(self) -> MarketContext:
-    # 특정 조건에 따른 커스텀 로직 추가
-    if some_condition:
-        market_phase = "custom_phase"
-        key_concerns = ["custom_concern1", "custom_concern2"]
-    else:
-        # 기본 로직
-        ...
-```
+## 📈 성능 최적화
 
-## 🔍 문제 해결
+### 캐싱 전략
+- 프롬프트 템플릿 캐싱
+- 변수 치환 결과 캐싱
+- 시장 컨텍스트 캐싱
 
-### 1. **프롬프트 매니저 로드 실패**
-
-```
-❌ 프롬프트 매니저 비활성화
-```
-
-**해결 방법:**
-1. `config/prompts.py` 파일이 존재하는지 확인
-2. Python 경로 설정 확인
-3. 대시보드 재시작
-
-### 2. **프롬프트 파일 생성 실패**
-
-```
-⚠️ 프롬프트 매니저 오류, 기본 프롬프트 사용
-```
-
-**해결 방법:**
-1. `config/prompts/` 디렉토리 권한 확인
-2. 디스크 공간 확인
-3. 파일 시스템 접근 권한 확인
-
-### 3. **변수 치환 오류**
-
-**해결 방법:**
-1. 템플릿의 변수명과 전달된 키워드 인자명 일치 확인
-2. 필수 변수가 모두 제공되었는지 확인
-3. 변수 타입 확인 (문자열, 숫자 등)
-
-## 📈 모니터링 및 로그
-
-### 프롬프트 사용 현황 확인
-
-```python
-# 프롬프트 시스템 정보 가져오기
-info = prompt_manager.get_prompt_info()
-print(f"마지막 업데이트: {info['last_updated']}")
-print(f"사용 가능한 프롬프트: {info['available_prompt_types']}")
-```
-
-### 대시보드에서 모니터링
-
-- 사이드바의 프롬프트 현황 섹션에서 실시간 정보 확인
-- 시장 컨텍스트 업데이트 버튼으로 수동 갱신
-- 확장 가능한 섹션에서 상세 정보 확인
-
-## 🎉 장점
-
-### 1. **유지보수성 향상**
-- 코드 수정 없이 프롬프트 변경 가능
-- 버전 관리 시스템에서 프롬프트 변경 이력 추적
-- 팀 협업시 프롬프트 공유 용이
-
-### 2. **시장 대응성**
-- 시장 상황 변화에 즉시 대응
-- 연도별 자동 시장 분석
-- 시나리오별 확률 자동 계산
-
-### 3. **확장성**
-- 새로운 프롬프트 타입 쉽게 추가
-- 다양한 업종별 프롬프트 템플릿 지원
-- 다국어 프롬프트 지원 가능
-
-### 4. **안정성**
-- 오류 발생시 기본 프롬프트로 폴백
-- 파일 시스템 오류 대응
-- 백업 및 복구 메커니즘
-
-## 🔮 향후 개선 계획
-
-1. **웹 인터페이스**: 프롬프트 편집을 위한 웹 기반 에디터
-2. **버전 관리**: 프롬프트 변경 이력 및 롤백 기능
-3. **A/B 테스트**: 다양한 프롬프트 버전의 성능 비교
-4. **자동 최적화**: AI를 활용한 프롬프트 자동 개선
-5. **다국어 지원**: 영어, 중국어 등 다국어 프롬프트
+### 메모리 관리
+- 불필요한 프롬프트 정리
+- 캐시 크기 제한
+- 주기적 메모리 정리
 
 ---
 
-이제 매번 코드를 수정할 필요 없이, 프롬프트 관리 시스템을 통해 효율적으로 GPT 프롬프트를 관리할 수 있습니다! 🚀 
+**🤖 이 시스템을 통해 GPT 프롬프트를 더욱 효율적이고 유연하게 관리할 수 있습니다!** 

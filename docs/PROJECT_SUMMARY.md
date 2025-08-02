@@ -1,269 +1,269 @@
-# Korean Airlines Credit Rating Analysis - Project Summary
+# 한국 항공사 신용등급 분석 - 프로젝트 요약
 
-## 🎯 Project Overview
+## 🎯 프로젝트 개요
 
-Comprehensive credit rating analysis system for Korean airlines using advanced multi-state hazard modeling and real-time risk assessment.
+고급 다중상태 위험 모델링과 실시간 위험 평가를 사용하는 한국 항공사 종합 신용등급 분석 시스템입니다.
 
-## 🚀 Key Features
+## 🚀 주요 기능
 
-### 📊 Data Pipeline
-- **DART API Integration**: Automated financial data collection
-- **Multi-Source Data**: DART, NICE/KIS, KRX integration
-- **Real-time Processing**: Live data updates and caching
-- **Credit Rating Preprocessing**: Option A + Meta Flag approach
+### 📊 데이터 파이프라인
+- **DART API 통합**: 자동화된 재무 데이터 수집
+- **다중 소스 데이터**: DART, NICE/KIS, KRX 통합
+- **실시간 처리**: 실시간 데이터 업데이트 및 캐싱
+- **신용등급 전처리**: Option A + Meta Flag 접근법
 
-### 🎯 Credit Rating Preprocessing (NEW)
-- **Option A Approach**: NR → WD conversion with 4-state model preservation
-- **Meta Flag System**: nr_flag, consecutive_nr_days, nr_reason tagging
-- **30-Day Rule**: Consecutive NR threshold for Withdrawn events
-- **Risk Adjustments**: WD+NR (20% multiplier) and long-term NR adjustments
-- **Alert System**: 90-day threshold for Slack notifications
+### 🎯 신용등급 전처리 (신규)
+- **Option A 접근법**: 4상태 모델 보존과 함께 NR → WD 변환
+- **메타 플래그 시스템**: nr_flag, consecutive_nr_days, nr_reason 태깅
+- **30일 규칙**: Withdrawn 이벤트를 위한 연속 NR 임계값
+- **위험 조정**: WD+NR (20% 승수) 및 장기 NR 조정
+- **알림 시스템**: Slack 알림을 위한 90일 임계값
 
-### 🔬 Advanced Modeling
-- **Multi-State Hazard Models**: Cox proportional hazards for rating transitions
-- **Enhanced Risk Scoring**: 90-day probability calculations
-- **Financial Ratio Integration**: 20+ key financial metrics
-- **Real-time Assessment**: Live risk monitoring and alerts
+### 🔬 고급 모델링
+- **다중상태 위험 모델**: 등급 변동을 위한 Cox 비례 위험 모델
+- **향상된 위험 점수**: 90일 확률 계산
+- **재무비율 통합**: 20개 이상의 핵심 재무 지표
+- **실시간 평가**: 실시간 위험 모니터링 및 알림
 
-### 📈 Dashboard & Analytics
-- **Interactive Dashboard**: Real-time credit rating visualization
-- **Risk Heatmaps**: Company and portfolio risk assessment
-- **Transition Analysis**: Rating change probability tracking
-- **Financial Metrics**: Comprehensive ratio analysis
+### 📈 대시보드 및 분석
+- **인터랙티브 대시보드**: 실시간 신용등급 시각화
+- **위험 히트맵**: 기업 및 포트폴리오 위험 평가
+- **변동 분석**: 등급 변화 확률 추적
+- **재무 지표**: 종합적인 비율 분석
 
-### 🔔 Alert System
-- **Slack Integration**: Real-time notifications
-- **Multi-level Alerts**: Rating changes, financial deterioration, NR states
-- **Customizable Thresholds**: Configurable alert conditions
-- **Escalation Workflows**: Automated response triggers
+### 🔔 알림 시스템
+- **Slack 통합**: 실시간 알림
+- **다단계 알림**: 등급 변화, 재무 악화, NR 상태
+- **사용자 정의 임계값**: 구성 가능한 알림 조건
+- **에스컬레이션 워크플로우**: 자동화된 응답 트리거
 
-## 🏗️ Architecture
+## 🏗️ 아키텍처
 
 ```
-Data Sources
-├── DART Open API (Financial Statements)
-├── NICE/KIS (Credit Ratings)
-└── KRX (Stock Information)
+데이터 소스
+├── DART Open API (재무제표)
+├── NICE/KIS (신용등급)
+└── KRX (주식 정보)
 
-Data Pipeline
-├── Financial Data ETL
-├── Credit Rating Preprocessing ← NEW
-└── Multi-State Model Training
+데이터 파이프라인
+├── 재무 데이터 ETL
+├── 신용등급 전처리 ← 신규
+└── 다중상태 모델 훈련
 
-Analysis Engine
-├── Enhanced Multi-State Models
-├── Risk Scoring Engine
-└── Alert System
+분석 엔진
+├── 향상된 다중상태 모델
+├── 위험 점수 엔진
+└── 알림 시스템
 
-Output
-├── Interactive Dashboard
-├── Risk Reports
-└── Slack Notifications
+출력
+├── 인터랙티브 대시보드
+├── 위험 리포트
+└── Slack 알림
 ```
 
-## 📁 File Structure
+## 📁 파일 구조
 
-### Core Components
-- `korean_airlines_data_pipeline.py` - Main data pipeline with preprocessing integration
-- `credit_rating_preprocessor.py` - **NEW**: Option A + Meta Flag preprocessing
-- `enhanced_multistate_model.py` - Multi-state hazard modeling
-- `rating_risk_scorer.py` - Risk scoring with NR flag support
-- `credit_rating_dashboard.py` - Interactive dashboard
+### 핵심 구성 요소
+- `korean_airlines_data_pipeline.py` - 전처리 통합이 포함된 메인 데이터 파이프라인
+- `credit_rating_preprocessor.py` - **신규**: Option A + Meta Flag 전처리
+- `enhanced_multistate_model.py` - 다중상태 위험 모델링
+- `rating_risk_scorer.py` - NR 플래그 지원이 포함된 위험 점수
+- `credit_rating_dashboard.py` - 인터랙티브 대시보드
 
-### Data Processing
-- `financial_ratio_calculator.py` - Financial metrics calculation
-- `dart_data_cache.py` - DART API caching system
-- `financial_data_etl.py` - ETL pipeline for financial data
+### 데이터 처리
+- `financial_ratio_calculator.py` - 재무 지표 계산
+- `dart_data_cache.py` - DART API 캐싱 시스템
+- `financial_data_etl.py` - 재무 데이터용 ETL 파이프라인
 
-### Configuration & Documentation
-- `config.py` - System configuration
-- `CREDIT_RATING_PREPROCESSING_GUIDE.md` - **NEW**: Preprocessing documentation
-- `README.md` - Project overview and setup
-- `PROJECT_SUMMARY.md` - This file
+### 설정 및 문서
+- `config.py` - 시스템 설정
+- `CREDIT_RATING_PREPROCESSING_GUIDE.md` - **신규**: 전처리 문서
+- `README.md` - 프로젝트 개요 및 설정
+- `PROJECT_SUMMARY.md` - 이 파일
 
-### Demo & Testing
-- `demo_preprocessing.py` - **NEW**: Preprocessing demonstration
-- `backtest_framework.py` - Model validation framework
-- `slack_alert_demo.py` - Alert system demonstration
+### 데모 및 테스트
+- `demo_preprocessing.py` - **신규**: 전처리 데모
+- `backtest_framework.py` - 모델 검증 프레임워크
+- `slack_alert_demo.py` - 알림 시스템 데모
 
-## 🎯 Credit Rating Preprocessing Features
+## 🎯 신용등급 전처리 기능
 
-### Option A + Meta Flag Approach
+### Option A + Meta Flag 접근법
 ```python
-# Configuration
+# 설정
 config = PreprocessingConfig(
-    consecutive_nr_days=30,      # 30-day threshold for Withdrawn
-    risk_multiplier=1.20,        # 20% risk increase for WD+NR
-    alert_threshold_days=90      # 90-day alert threshold
+    consecutive_nr_days=30,      # Withdrawn을 위한 30일 임계값
+    risk_multiplier=1.20,        # WD+NR을 위한 20% 위험 증가
+    alert_threshold_days=90      # 90일 알림 임계값
 )
 
-# Processing
+# 처리
 preprocessor = CreditRatingPreprocessor(config)
 df_processed = preprocessor.run_preprocessing(input_file)
 ```
 
-### Key Benefits
-- ✅ **Data Volume Preservation**: Maintains statistical power
-- ✅ **Industry Compliance**: Aligns with domestic practices
-- ✅ **System Stability**: Minimal changes to existing models
-- ✅ **Enhanced Risk Assessment**: Granular NR state tracking
+### 주요 이점
+- ✅ **데이터 볼륨 보존**: 통계적 파워 유지
+- ✅ **업계 준수**: 국내 관행과 일치
+- ✅ **시스템 안정성**: 기존 모델에 최소한의 변경
+- ✅ **향상된 위험 평가**: 세밀한 NR 상태 추적
 
-### Output Files
-- `TransitionHistory.csv` - Rating transitions with meta flags
-- `RatingMapping.csv` - Rating symbol to numeric mapping
-- `processed_data_summary.csv` - Complete processed dataset
-- `alerts.csv` - Alert conditions (if applicable)
+### 출력 파일
+- `TransitionHistory.csv` - 메타 플래그가 포함된 등급 변동
+- `RatingMapping.csv` - 등급 심볼에서 숫자로의 매핑
+- `processed_data_summary.csv` - 완전한 처리된 데이터셋
+- `alerts.csv` - 알림 조건 (해당하는 경우)
 
-## 🔧 Technical Stack
+## 🔧 기술 스택
 
-### Backend
-- **Python 3.8+**: Core analysis engine
-- **Pandas/NumPy**: Data manipulation and analysis
-- **Lifelines**: Survival analysis and hazard modeling
-- **Scikit-learn**: Machine learning components
+### 백엔드
+- **Python 3.8+**: 핵심 분석 엔진
+- **Pandas/NumPy**: 데이터 조작 및 분석
+- **Lifelines**: 생존 분석 및 위험 모델링
+- **Scikit-learn**: 머신러닝 구성 요소
 
-### Data Sources
-- **DART Open API**: Financial statement data
-- **NICE/KIS**: Credit rating disclosures
-- **KRX**: Stock market information
+### 데이터 소스
+- **DART Open API**: 재무제표 데이터
+- **NICE/KIS**: 신용등급 공시
+- **KRX**: 주식 시장 정보
 
-### Frontend
-- **Streamlit**: Interactive dashboard
-- **Plotly**: Advanced visualizations
-- **Slack API**: Real-time notifications
+### 프론트엔드
+- **Streamlit**: 인터랙티브 대시보드
+- **Plotly**: 고급 시각화
+- **Slack API**: 실시간 알림
 
-### Infrastructure
-- **Caching**: Redis/Memory-based caching
-- **Logging**: Comprehensive logging system
-- **Configuration**: Environment-based settings
+### 인프라
+- **캐싱**: Redis/메모리 기반 캐싱
+- **로깅**: 종합적인 로깅 시스템
+- **설정**: 환경 기반 설정
 
-## 📊 Target Companies
+## 📊 대상 기업
 
-### Korean Airlines Coverage
+### 한국 항공사 커버리지
 1. **대한항공 (Korean Air)** - KOSPI: 003490
 2. **아시아나항공 (Asiana Airlines)** - KOSPI: 020560
 3. **제주항공 (Jeju Air)** - KOSDAQ: 089590
 4. **티웨이항공 (T'way Air)** - KOSDAQ: 091810
 5. **에어부산 (Air Busan)** - KOSDAQ: 298690
 
-### Data Period
-- **Historical**: 2010-2025
-- **Frequency**: Quarterly financial data, monthly rating updates
-- **Coverage**: 15+ years of comprehensive data
+### 데이터 기간
+- **과거**: 2010-2025
+- **빈도**: 분기별 재무 데이터, 월별 등급 업데이트
+- **커버리지**: 15년 이상의 종합 데이터
 
-## 🎯 Key Metrics
+## 🎯 핵심 지표
 
-### Financial Ratios (20+ metrics)
-- **Liquidity**: Current ratio, quick ratio, cash ratio
-- **Solvency**: Debt-to-assets, debt-to-equity, equity ratio
-- **Profitability**: ROA, ROE, operating margin, net margin
-- **Efficiency**: Asset turnover, inventory turnover
-- **Coverage**: Interest coverage, debt service coverage
+### 재무비율 (20개 이상의 지표)
+- **유동성**: 유동비율, 당좌비율, 현금비율
+- **지급능력**: 부채비율, 부채자본비율, 자기자본비율
+- **수익성**: ROA, ROE, 영업이익률, 순이익률
+- **효율성**: 총자산회전율, 재고자산회전율
+- **보상**: 이자보상배율, 부채보상배율
 
-### Credit Rating Analysis
-- **Transition Probabilities**: 90-day rating change forecasts
-- **Risk Scores**: Company-specific risk assessments
-- **Portfolio Analysis**: Multi-company risk aggregation
-- **NR State Tracking**: Withdrawn rating monitoring
+### 신용등급 분석
+- **변동 확률**: 90일 등급 변화 예측
+- **위험 점수**: 기업별 위험 평가
+- **포트폴리오 분석**: 다중 기업 위험 집계
+- **NR 상태 추적**: 철회된 등급 모니터링
 
-## 🚀 Getting Started
+## 🚀 시작하기
 
-### Prerequisites
+### 사전 요구사항
 ```bash
 pip install -r requirements_pipeline.txt
 ```
 
-### Environment Setup
+### 환경 설정
 ```bash
-# Copy environment template
+# 환경 템플릿 복사
 cp env_example.txt .env
 
-# Set API keys
+# API 키 설정
 DART_API_KEY=your_dart_api_key
 OPENAI_API_KEY=your_openai_api_key
 SLACK_WEBHOOK_URL=your_slack_webhook
 ```
 
-### Quick Start
+### 빠른 시작
 ```bash
-# Run complete pipeline with preprocessing
+# 전처리가 포함된 완전한 파이프라인 실행
 python korean_airlines_data_pipeline.py
 
-# Run preprocessing demo
+# 전처리 데모 실행
 python demo_preprocessing.py
 
-# Launch dashboard
+# 대시보드 실행
 streamlit run credit_rating_dashboard.py
 ```
 
-## 📈 Performance Metrics
+## 📈 성능 지표
 
-### Model Performance
-- **C-Index**: 0.75+ for transition predictions
-- **Brier Score**: <0.15 for probability calibration
-- **Processing Speed**: <1 minute for typical datasets
-- **Accuracy**: 85%+ for rating change predictions
+### 모델 성능
+- **C-Index**: 변동 예측을 위한 0.75+
+- **Brier Score**: 확률 교정을 위한 <0.15
+- **처리 속도**: 일반적인 데이터셋을 위한 <1분
+- **정확도**: 등급 변화 예측을 위한 85%+
 
-### System Performance
-- **Data Volume**: 1000+ companies supported
-- **Real-time Processing**: <5 second response time
-- **Cache Efficiency**: 95%+ cache hit rate
-- **Alert Latency**: <30 second notification delay
+### 시스템 성능
+- **데이터 볼륨**: 1000개 이상의 기업 지원
+- **실시간 처리**: <5초 응답 시간
+- **캐시 효율성**: 95%+ 캐시 히트율
+- **알림 지연**: <30초 알림 지연
 
-## 🔮 Future Enhancements
+## 🔮 향후 개선
 
-### Short-term (3-6 months)
-- **Global Expansion**: Support for international airlines
-- **Advanced Analytics**: Machine learning enhancements
-- **Real-time Data**: Daily data collection
-- **Mobile Dashboard**: Mobile-optimized interface
+### 단기 (3-6개월)
+- **글로벌 확장**: 국제 항공사 지원
+- **고급 분석**: 머신러닝 개선
+- **실시간 데이터**: 일일 데이터 수집
+- **모바일 대시보드**: 모바일 최적화 인터페이스
 
-### Long-term (6-12 months)
-- **AI Integration**: GPT-4 for report generation
-- **Predictive Modeling**: Advanced forecasting capabilities
-- **Regulatory Compliance**: Enhanced reporting features
-- **API Services**: External API for third-party integration
+### 장기 (6-12개월)
+- **AI 통합**: 리포트 생성을 위한 GPT-4
+- **예측 모델링**: 고급 예측 기능
+- **규제 준수**: 향상된 보고 기능
+- **API 서비스**: 타사 통합을 위한 외부 API
 
-## 📚 Documentation
+## 📚 문서
 
-### User Guides
-- `README.md` - Project overview and setup
-- `CREDIT_RATING_PREPROCESSING_GUIDE.md` - Preprocessing system guide
-- `dashboard_user_guide.md` - Dashboard usage guide
-- `korean_airlines_pipeline_guide.md` - Pipeline operation guide
+### 사용자 가이드
+- `README.md` - 프로젝트 개요 및 설정
+- `CREDIT_RATING_PREPROCESSING_GUIDE.md` - 전처리 시스템 가이드
+- `dashboard_user_guide.md` - 대시보드 사용 가이드
+- `korean_airlines_pipeline_guide.md` - 파이프라인 운영 가이드
 
-### Technical Documentation
-- `EXPANSION_ROADMAP.md` - Development roadmap
-- `db_integration_plan.md` - Database integration plan
-- `PROJECT_SUMMARY.md` - This comprehensive summary
+### 기술 문서
+- `EXPANSION_ROADMAP.md` - 개발 로드맵
+- `db_integration_plan.md` - 데이터베이스 통합 계획
+- `PROJECT_SUMMARY.md` - 이 종합 요약
 
-## 🤝 Contributing
+## 🤝 기여하기
 
-### Development Workflow
-1. **Fork** the repository
-2. **Create** feature branch
-3. **Implement** changes with tests
-4. **Submit** pull request
-5. **Review** and merge
+### 개발 워크플로우
+1. **Fork** 저장소
+2. **Create** 기능 브랜치
+3. **Implement** 테스트와 함께 변경사항
+4. **Submit** 풀 리퀘스트
+5. **Review** 및 머지
 
-### Code Standards
-- **Python**: PEP 8 compliance
-- **Documentation**: Comprehensive docstrings
-- **Testing**: Unit and integration tests
-- **Logging**: Structured logging throughout
+### 코드 표준
+- **Python**: PEP 8 준수
+- **문서**: 종합적인 독스트링
+- **테스트**: 단위 및 통합 테스트
+- **로깅**: 전체에 걸친 구조화된 로깅
 
-## 📞 Support
+## 📞 지원
 
-### Contact Information
-- **Project Lead**: Korean Airlines Credit Rating Analysis Team
-- **Technical Support**: Via GitHub Issues
-- **Documentation**: Comprehensive guides included
+### 연락처 정보
+- **프로젝트 리드**: 한국 항공사 신용등급 분석 팀
+- **기술 지원**: GitHub Issues를 통해
+- **문서**: 포함된 종합 가이드
 
-### Resources
-- **API Documentation**: DART Open API, Slack API
-- **Model Documentation**: Lifelines, Scikit-learn
-- **Best Practices**: Industry standards and guidelines
+### 리소스
+- **API 문서**: DART Open API, Slack API
+- **모델 문서**: Lifelines, Scikit-learn
+- **모범 사례**: 업계 표준 및 가이드라인
 
 ---
 
-*This project represents a comprehensive solution for credit rating analysis in the Korean airline industry, combining advanced statistical modeling with real-time monitoring and alerting capabilities.* 
+*이 프로젝트는 고급 통계 모델링과 실시간 모니터링 및 알림 기능을 결합한 한국 항공업계 신용등급 분석을 위한 종합 솔루션을 나타냅니다.* 

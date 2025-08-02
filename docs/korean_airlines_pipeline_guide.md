@@ -1,38 +1,38 @@
-# Korean Airlines Credit Rating Data Pipeline
+# 한국 항공사 신용등급 데이터 파이프라인
 
-## 🎯 Overview
+## 🎯 개요
 
-This pipeline collects and processes credit rating transition data for major Korean airline companies:
+이 파이프라인은 주요 한국 항공사들의 신용등급 변동 데이터를 수집하고 처리합니다:
 
 - **대한항공** (Korean Air) - KOSPI: 003490
 - **아시아나항공** (Asiana Airlines) - KOSPI: 020560  
 - **제주항공** (Jeju Air) - KOSDAQ: 089590
 - **티웨이항공** (T'way Air) - KOSDAQ: 091810
 
-## 📊 Data Sources
+## 📊 데이터 소스
 
-### 1. DART API (Financial Data)
-- **Source**: [DART Open API](https://opendart.fss.or.kr/)
-- **Period**: 2010Q1 ~ 2025Q2
-- **Data**: Quarterly financial statements
-- **Output**: 20 key financial ratios per company per quarter
+### 1. DART API (재무 데이터)
+- **소스**: [DART Open API](https://opendart.fss.or.kr/)
+- **기간**: 2010Q1 ~ 2025Q2
+- **데이터**: 분기별 재무제표
+- **출력**: 기업당 분기별 20개 핵심 재무비율
 
-### 2. Credit Rating Agencies (Rating History) 
+### 2. 신용평가사 (등급 이력)
 - **NICE신용평가** (NICE Credit Rating)
 - **한국신용평가** (KIS Credit Rating)
-- **Data**: effective_date, rating transitions
-- **Format**: Standardized rating scale (AAA to D, NR)
+- **데이터**: effective_date, 등급 변동
+- **형식**: 표준화된 등급 체계 (AAA to D, NR)
 
-## 🏗️ Pipeline Architecture
+## 🏗️ 파이프라인 아키텍처
 
 ```
-Data Collection → Processing → Normalization → Output
-     ↓               ↓            ↓           ↓
-  DART API       Financial     CSV Format   Required
-  Rating APIs    Ratios        Mapping      Files
+데이터 수집 → 처리 → 정규화 → 출력
+     ↓           ↓        ↓       ↓
+  DART API    재무비율   CSV 형식  필요 파일
+  등급 API    계산      매핑
 ```
 
-## 📁 Output Files
+## 📁 출력 파일
 
 ### TransitionHistory.csv
 ```csv
@@ -57,177 +57,267 @@ D,7
 NR,8
 ```
 
-## 🚀 Quick Start
+## 🚀 빠른 시작
 
-### Prerequisites
+### 사전 요구사항
 ```bash
-# Activate conda environment
+# conda 환경 활성화
 conda activate credit_rating_transition
 
-# Install additional dependencies (if needed)
+# 추가 의존성 설치 (필요시)
 pip install requests beautifulsoup4 lxml python-dotenv tqdm
 ```
 
-### Basic Usage
+### 기본 사용법
 ```bash
-# Run with sample data (no API key needed)
+# 샘플 데이터로 실행 (API 키 불필요)
 python run_korean_airlines_pipeline.py
 ```
 
-### With DART API (Real Data)
+### DART API 사용 (실제 데이터)
 ```bash
-# 1. Get DART API key from https://opendart.fss.or.kr/
-# 2. Set environment variable
+# 1. https://opendart.fss.or.kr/에서 DART API 키 발급
+# 2. 환경 변수 설정
 export DART_API_KEY=your_api_key_here
 
-# 3. Run pipeline
+# 3. 파이프라인 실행
 python run_korean_airlines_pipeline.py
 ```
 
-## 📈 Current Status
+## 📈 현재 상태
 
-### ✅ Completed Features
+### ✅ 완료된 기능
 
-1. **Target Company Definition**
-   - [x] 4 major Korean airlines identified
-   - [x] Stock codes and market classification
-   - [x] Issuer ID mapping for transition matrix
+1. **대상 기업 정의**
+   - [x] 4개 주요 한국 항공사 식별
+   - [x] 주식 코드 및 시장 분류
+   - [x] 전환 매트릭스용 발행자 ID 매핑
 
-2. **DART Scraper Framework** 
-   - [x] DART Open API integration
-   - [x] Quarterly financial statement collection
-   - [x] 20 financial ratios calculation
-   - [x] Error handling and rate limiting
+2. **DART 스크래퍼 프레임워크**
+   - [x] DART Open API 통합
+   - [x] 분기별 재무제표 수집
+   - [x] 20개 재무비율 계산
+   - [x] 오류 처리 및 요청 제한
 
-3. **Data Format Compliance**
-   - [x] TransitionHistory.csv format matching original repo
-   - [x] RatingMapping.csv with standard rating scale
-   - [x] CSV normalization and validation
+3. **신용등급 전처리**
+   - [x] Option A + Meta Flag 접근법
+   - [x] NR → WD 변환 로직
+   - [x] 30일 연속 규칙
+   - [x] 메타 플래그 시스템
 
-4. **Sample Data Generation**
-   - [x] Realistic rating progression for each airline
-   - [x] Time-series format (2010-2024)
-   - [x] Rating transitions reflecting industry events
+4. **데이터 정규화**
+   - [x] 등급 심볼 → 숫자 매핑
+   - [x] 날짜 형식 표준화
+   - [x] 중복 데이터 제거
+   - [x] 데이터 품질 검증
 
-### 🔄 Next Steps (Manual Data Collection Required)
+### 🔄 진행 중인 작업
 
-1. **NICE Credit Rating Collection**
-   - [ ] Manual collection from NICE disclosure reports
-   - [ ] Parsing of PDF/HTML rating announcements
-   - [ ] Date and rating extraction
+1. **실시간 데이터 수집**
+   - [ ] 자동화된 데이터 수집 스케줄링
+   - [ ] 실시간 알림 시스템
+   - [ ] 데이터 변경 감지
 
-2. **KIS Credit Rating Collection** 
-   - [ ] Manual collection from KIS disclosure reports
-   - [ ] Cross-validation with NICE ratings
-   - [ ] Handling of rating disagreements
+2. **성능 최적화**
+   - [ ] 병렬 처리 구현
+   - [ ] 캐싱 시스템 개선
+   - [ ] 메모리 사용량 최적화
 
-3. **Data Quality Validation**
-   - [ ] Rating consistency checks
-   - [ ] Missing data interpolation strategy
-   - [ ] Outlier detection and handling
+## 🔧 설정 및 구성
 
-## 💰 Financial Ratios Calculated
-
-The pipeline calculates 20 key financial ratios:
-
-### Liquidity Ratios
-- Current Ratio
-- Quick Ratio  
-- Working Capital Ratio
-
-### Leverage Ratios
-- Debt-to-Assets
-- Debt-to-Equity
-- Equity Ratio
-- Interest Coverage
-
-### Profitability Ratios
-- ROA (Return on Assets)
-- ROE (Return on Equity)
-- Operating Margin
-- Net Margin
-
-### Efficiency Ratios
-- Asset Turnover
-- Cash Flow to Assets
-- Operating CF Ratio
-
-### Airline-Specific Ratios
-- Cash Flow Coverage
-- Debt Service Coverage
-- Times Interest Earned
-
-## 🔧 Configuration
-
-### Environment Variables
+### 환경 변수
 ```bash
-# Required for real financial data
-DART_API_KEY=your_dart_api_key
+# DART API 설정
+DART_API_KEY=your_dart_api_key_here
 
-# Optional configurations
-PIPELINE_LOG_LEVEL=INFO
-OUTPUT_DIRECTORY=./output
+# 데이터 소스 설정
+USE_REAL_DATA=true  # true: 실제 API, false: 샘플 데이터
+CACHE_ENABLED=true  # 캐싱 활성화 여부
+
+# 출력 설정
+OUTPUT_DIRECTORY=data/processed
+LOG_LEVEL=INFO
 ```
 
-### Pipeline Settings
+### 설정 파일
 ```python
-# In korean_airlines_data_pipeline.py
-START_YEAR = 2010
-END_YEAR = 2025
-USE_SAMPLE_RATINGS = True  # Set to False for real rating data
+# config/config.py
+DART_API_BASE_URL = "https://opendart.fss.or.kr/api"
+RATE_LIMIT_DELAY = 1.0  # API 요청 간격 (초)
+MAX_RETRIES = 3         # 최대 재시도 횟수
 ```
 
-## 📊 Data Quality Considerations
+## 📊 데이터 처리 과정
 
-### Risks & Mitigation
-1. **DART API Rate Limits**
-   - ✅ Built-in rate limiting (0.1s between requests)
-   - ✅ Retry logic for failed requests
-
-2. **Missing Financial Data**
-   - ✅ Graceful handling of missing quarters
-   - ✅ Zero-filling for unavailable ratios
-
-3. **Rating Data Quality** ⚠️ **Highest Risk**
-   - ❌ Manual data collection required
-   - ❌ Potential inconsistencies between agencies
-   - ✅ Standardized rating scale mapping
-
-### Data Validation
-- Financial ratios sanity checks
-- Rating progression logical validation  
-- Time series continuity verification
-
-## 🛠️ Extending the Pipeline
-
-### Adding New Airlines
+### 1. 데이터 수집 단계
 ```python
-# In korean_airlines_data_pipeline.py
-AIRLINE_COMPANIES.append(
-    AirlineCompany("New Airline", "새로운항공", "123456", "KOSDAQ", "", 5)
+# DART API에서 재무 데이터 수집
+financial_data = dart_scraper.collect_financial_data(
+    companies=target_companies,
+    start_date="2010-01-01",
+    end_date="2025-06-30"
+)
+
+# 신용등급 데이터 수집
+rating_data = rating_scraper.collect_rating_history(
+    companies=target_companies
 )
 ```
 
-### Adding New Financial Ratios
+### 2. 전처리 단계
 ```python
-# In calculate_financial_ratios method
-ratios['new_ratio'] = calculation_logic
+# 신용등급 전처리 (Option A + Meta Flag)
+preprocessor = CreditRatingPreprocessor(config)
+processed_data = preprocessor.run_preprocessing(rating_data)
 ```
 
-### Real Rating Data Integration
+### 3. 정규화 단계
 ```python
-# Replace sample data in collect_rating_data method
-def collect_rating_data(self, use_sample: bool = False):
-    if not use_sample:
-        # Implement real rating collection logic
-        return self.scrape_nice_ratings() + self.scrape_kis_ratings()
+# 데이터 정규화 및 매핑
+normalizer = DataNormalizer()
+normalized_data = normalizer.normalize_data(processed_data)
 ```
 
-## 📞 Support & Next Steps
+### 4. 출력 단계
+```python
+# CSV 파일로 출력
+output_writer = OutputWriter(output_directory)
+output_writer.write_transition_history(normalized_data)
+output_writer.write_rating_mapping(normalized_data)
+```
 
-For the PoC phase:
-1. **Current implementation** handles the DART API integration (automated)
-2. **Manual rating collection** needed for 4 companies (1 day effort as noted)
-3. **Data quality validation** before running transition matrix analysis
+## 🎯 사용 예시
 
-The pipeline is ready for production use once real rating data is collected and integrated. 
+### 기본 파이프라인 실행
+```python
+from src.data.korean_airlines_data_pipeline import KoreanAirlinesDataPipeline
+
+# 파이프라인 초기화
+pipeline = KoreanAirlinesDataPipeline()
+
+# 전체 파이프라인 실행
+pipeline.run_full_pipeline()
+
+# 결과 확인
+print("✅ 파이프라인 실행 완료!")
+print(f"📁 출력 파일: {pipeline.output_directory}")
+```
+
+### 단계별 실행
+```python
+# 1. 데이터 수집만 실행
+pipeline.collect_data()
+
+# 2. 전처리만 실행
+pipeline.preprocess_data()
+
+# 3. 정규화만 실행
+pipeline.normalize_data()
+
+# 4. 출력만 실행
+pipeline.write_output()
+```
+
+## 🔍 데이터 품질 검증
+
+### 자동 검증
+```python
+# 데이터 품질 검증 실행
+validator = DataValidator()
+validation_results = validator.validate_pipeline_output()
+
+# 검증 결과 확인
+if validation_results.is_valid:
+    print("✅ 데이터 품질 검증 통과")
+else:
+    print("❌ 데이터 품질 문제 발견:")
+    for issue in validation_results.issues:
+        print(f"  - {issue}")
+```
+
+### 수동 검증
+```bash
+# 출력 파일 확인
+ls -la data/processed/
+
+# 데이터 통계 확인
+python -c "
+import pandas as pd
+df = pd.read_csv('data/processed/TransitionHistory.csv')
+print(f'총 레코드 수: {len(df)}')
+print(f'기간: {df.Date.min()} ~ {df.Date.max()}')
+print(f'고유 등급: {df.RatingSymbol.nunique()}개')
+"
+```
+
+## 🚨 문제 해결
+
+### 일반적인 문제들
+
+#### 1. DART API 오류
+```bash
+# API 키 확인
+echo $DART_API_KEY
+
+# 네트워크 연결 확인
+curl -I https://opendart.fss.or.kr/api
+```
+
+#### 2. 메모리 부족
+```python
+# 배치 처리로 메모리 사용량 줄이기
+pipeline = KoreanAirlinesDataPipeline(batch_size=1000)
+```
+
+#### 3. 데이터 누락
+```python
+# 누락된 데이터 확인
+missing_data = pipeline.check_missing_data()
+if missing_data:
+    print("누락된 데이터 발견:")
+    for item in missing_data:
+        print(f"  - {item}")
+```
+
+## 📈 성능 모니터링
+
+### 실행 시간 측정
+```python
+import time
+
+start_time = time.time()
+pipeline.run_full_pipeline()
+end_time = time.time()
+
+print(f"총 실행 시간: {end_time - start_time:.2f}초")
+```
+
+### 메모리 사용량 모니터링
+```python
+import psutil
+
+process = psutil.Process()
+memory_usage = process.memory_info().rss / 1024 / 1024  # MB
+print(f"메모리 사용량: {memory_usage:.2f} MB")
+```
+
+## 🔮 향후 개선 계획
+
+### 단기 계획 (1-3개월)
+- [ ] 실시간 데이터 수집 자동화
+- [ ] 웹 인터페이스 추가
+- [ ] 성능 최적화
+
+### 중기 계획 (3-6개월)
+- [ ] 추가 항공사 지원
+- [ ] 국제 항공사 데이터 수집
+- [ ] 고급 분석 기능 추가
+
+### 장기 계획 (6-12개월)
+- [ ] AI 기반 데이터 품질 검증
+- [ ] 예측 모델 통합
+- [ ] 클라우드 배포 지원
+
+---
+
+**✈️ 한국 항공업계의 신용위험 분석을 위한 강력한 데이터 파이프라인입니다!** 
